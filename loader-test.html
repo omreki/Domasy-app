@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loader Test - Domasy Optimizations</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            padding: 40px;
+            font-family: 'Inter', sans-serif;
+            background: var(--gray-50);
+        }
+
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: var(--gray-900);
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: var(--gray-600);
+            margin-bottom: 40px;
+        }
+
+        .test-section {
+            margin-bottom: 40px;
+            padding-bottom: 40px;
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .test-section:last-child {
+            border-bottom: none;
+        }
+
+        .test-section h2 {
+            color: var(--gray-800);
+            margin-bottom: 20px;
+            font-size: 20px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .demo-card {
+            background: var(--gray-50);
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+        }
+
+        .success-message {
+            background: var(--success-50);
+            color: var(--success-700);
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-top: 16px;
+            display: none;
+        }
+
+        .success-message.show {
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Global Loader (from main app) -->
+    <div id="globalLoader" class="global-loader">
+        <div class="loader-content">
+            <div class="loader-spinner"></div>
+            <div class="loader-text">Loading...</div>
+        </div>
+    </div>
+
+    <div class="test-container">
+        <h1>🚀 Loader & Optimization Test</h1>
+        <p class="subtitle">Test all the new loading states and performance optimizations</p>
+
+        <!-- Test 1: Global Loader -->
+        <div class="test-section">
+            <h2>1. Global Full-Screen Loader</h2>
+            <p style="color: var(--gray-600); margin-bottom: 16px;">
+                This loader appears automatically on all API calls
+            </p>
+            <div class="button-group">
+                <button class="btn btn-primary" onclick="testGlobalLoader()">
+                    <i class="fas fa-play"></i> Test Global Loader
+                </button>
+                <button class="btn btn-success" onclick="testCustomMessage()">
+                    <i class="fas fa-message"></i> Test Custom Message
+                </button>
+            </div>
+            <div id="globalResult" class="success-message"></div>
+        </div>
+
+        <!-- Test 2: Button Loading States -->
+        <div class="test-section">
+            <h2>2. Button Loading States</h2>
+            <p style="color: var(--gray-600); margin-bottom: 16px;">
+                Buttons show loading spinners and get disabled during processing
+            </p>
+            <div class="button-group">
+                <button class="btn btn-primary" id="testBtn1" onclick="testButtonLoading(this)">
+                    <i class="fas fa-upload"></i> Test Primary Button
+                </button>
+                <button class="btn btn-success" id="testBtn2" onclick="testButtonLoading(this)">
+                    <i class="fas fa-check"></i> Test Success Button
+                </button>
+                <button class="btn btn-danger" id="testBtn3" onclick="testButtonLoading(this)">
+                    <i class="fas fa-trash"></i> Test Danger Button
+                </button>
+            </div>
+            <div id="buttonResult" class="success-message"></div>
+        </div>
+
+        <!-- Test 3: Inline Spinners -->
+        <div class="test-section">
+            <h2>3. Inline Spinners</h2>
+            <p style="color: var(--gray-600); margin-bottom: 16px;">
+                Small spinners for inline use
+            </p>
+            <div class="demo-card">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span class="spinner-sm"></span>
+                    <span>Loading content...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Test 4: Loading Dots -->
+        <div class="test-section">
+            <h2>4. Loading Dots Animation</h2>
+            <p style="color: var(--gray-600); margin-bottom: 16px;">
+                Animated dots for subtle loading indication
+            </p>
+            <div class="demo-card">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span>Processing</span>
+                    <div class="loading-dots">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Test 5: Skeleton Loaders -->
+        <div class="test-section">
+            <h2>5. Skeleton Loaders</h2>
+            <p style="color: var(--gray-600); margin-bottom: 16px;">
+                Placeholder content while loading
+            </p>
+            <div class="demo-card">
+                <div class="skeleton skeleton-title"></div>
+                <div class="skeleton skeleton-text"></div>
+                <div class="skeleton skeleton-text" style="width: 80%;"></div>
+                <div class="skeleton skeleton-text" style="width: 60%;"></div>
+            </div>
+        </div>
+
+        <!-- Test 6: Progress Bar -->
+        <div class="test-section">
+            <h2>6. Progress Bar</h2>
+            <p style="color: var(--gray-600); margin-bottom: 16px;">
+                Animated progress indication
+            </p>
+            <div class="demo-card">
+                <div class="progress-bar">
+                    <div class="progress-bar-fill" style="width: 65%;"></div>
+                </div>
+                <p style="margin-top: 12px; color: var(--gray-600); font-size: 14px;">
+                    65% Complete
+                </p>
+            </div>
+        </div>
+
+        <!-- Test 7: Card Loading -->
+        <div class="test-section">
+            <h2>7. Card Loading State</h2>
+            <p style="color: var(--gray-600); margin-bottom: 16px;">
+                Cards show loading overlay with spinner
+            </p>
+            <button class="btn btn-primary" onclick="testCardLoading()">
+                <i class="fas fa-sync"></i> Test Card Loading
+            </button>
+            <div class="demo-card" id="testCard" style="min-height: 150px; margin-top: 16px;">
+                <h3 style="margin-bottom: 12px;">Sample Card</h3>
+                <p style="color: var(--gray-600);">This card will show a loading state when you click the button above.
+                </p>
+            </div>
+        </div>
+
+        <!-- Performance Info -->
+        <div class="test-section">
+            <h2>📊 Performance Optimizations Active</h2>
+            <div style="background: var(--primary-50); color: var(--primary-700); padding: 20px; border-radius: 12px;">
+                <ul style="margin: 0; padding-left: 20px;">
+                    <li style="margin-bottom: 8px;">✅ Response caching enabled (5min default)</li>
+                    <li style="margin-bottom: 8px;">✅ Dashboard cached for 2 minutes</li>
+                    <li style="margin-bottom: 8px;">✅ Automatic cache invalidation on mutations</li>
+                    <li style="margin-bottom: 8px;">✅ Query performance logging active</li>
+                    <li style="margin-bottom: 8px;">✅ Slow query detection (&gt;1000ms)</li>
+                    <li>✅ Database query optimizations applied</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Test 1: Global Loader
+        function testGlobalLoader() {
+            const loader = document.getElementById('globalLoader');
+            const loaderText = loader.querySelector('.loader-text');
+            loaderText.textContent = 'Testing global loader...';
+            loader.classList.add('show');
+
+            setTimeout(() => {
+                loader.classList.remove('show');
+                showResult('globalResult', 'Global loader works perfectly! ✅');
+            }, 2000);
+        }
+
+        function testCustomMessage() {
+            const loader = document.getElementById('globalLoader');
+            const loaderText = loader.querySelector('.loader-text');
+            loaderText.textContent = 'Uploading document...';
+            loader.classList.add('show');
+
+            setTimeout(() => {
+                loaderText.textContent = 'Processing...';
+            }, 1000);
+
+            setTimeout(() => {
+                loader.classList.remove('show');
+                loaderText.textContent = 'Loading...'; // Reset
+                showResult('globalResult', 'Custom message loader works perfectly! ✅');
+            }, 3000);
+        }
+
+        // Test 2: Button Loading
+        function testButtonLoading(button) {
+            button.classList.add('loading');
+            button.disabled = true;
+
+            setTimeout(() => {
+                button.classList.remove('loading');
+                button.disabled = false;
+                showResult('buttonResult', 'Button loading state works perfectly! ✅');
+            }, 2000);
+        }
+
+        // Test 7: Card Loading
+        function testCardLoading() {
+            const card = document.getElementById('testCard');
+            card.classList.add('loading');
+
+            setTimeout(() => {
+                card.classList.remove('loading');
+            }, 2000);
+        }
+
+        // Helper function
+        function showResult(id, message) {
+            const element = document.getElementById(id);
+            element.textContent = message;
+            element.classList.add('show');
+
+            setTimeout(() => {
+                element.classList.remove('show');
+            }, 3000);
+        }
+    </script>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</body>
+
+</html>

@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Domasy - Modern Document Management and Approval System">
+    <title>Domasy - Document Management System</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+    <!-- Main App Container -->
+    <div id="app" class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i class="fas fa-shield-alt"></i>
+                    <span class="logo-text">Domasy</span>
+                </div>
+                <button class="sidebar-toggle" id="sidebarToggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="#dashboard" class="nav-item active" data-page="dashboard">
+                    <i class="fas fa-th-large"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#documents" class="nav-item" data-page="documents">
+                    <i class="fas fa-file-alt"></i>
+                    <span>Documents</span>
+                </a>
+                <a href="#projects" class="nav-item" data-page="projects">
+                    <i class="fas fa-folder"></i>
+                    <span>Projects</span>
+                </a>
+                <a href="#team" class="nav-item" data-page="team">
+                    <i class="fas fa-users"></i>
+                    <span>Team</span>
+                </a>
+                <a href="#audit-log" class="nav-item" data-page="audit-log">
+                    <i class="fas fa-clipboard-list"></i>
+                    <span>Audit Logs</span>
+                </a>
+                <a href="#settings" class="nav-item" data-page="settings">
+                    <i class="fas fa-cog"></i>
+                    <span>Settings</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-profile" id="sidebarUserProfile" style="cursor: pointer; position: relative;">
+                    <img src="https://ui-avatars.com/api/?name=User&background=random" alt="User" class="user-avatar"
+                        id="sidebarUserAvatar">
+                    <div class="user-info">
+                        <div class="user-name" id="sidebarUserName">Loading...</div>
+                        <div class="user-role" id="sidebarUserRole">...</div>
+                    </div>
+                    <button class="user-menu-btn">
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <!-- Sidebar dropdown -->
+                    <div id="sidebarUserDropdown" class="dropdown-menu"
+                        style="display: none; position: absolute; bottom: 120%; left: 0; background: white; border: 1px solid var(--gray-200); border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); width: 100%; z-index: 100; min-width: 200px;">
+                        <a href="#" class="dropdown-item" onclick="app.navigateTo('settings')"
+                            style="display: block; padding: 10px 15px; color: var(--gray-700); text-decoration: none; border-bottom: 1px solid var(--gray-100);">
+                            <i class="fas fa-user-circle" style="margin-right: 8px;"></i> Profile
+                        </a>
+                        <a href="#" class="dropdown-item" onclick="app.logout()"
+                            style="display: block; padding: 10px 15px; color: var(--error-600); text-decoration: none;">
+                            <i class="fas fa-sign-out-alt" style="margin-right: 8px;"></i> Logout
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Top Header -->
+            <header class="top-header">
+                <div class="header-left">
+                    <button class="mobile-menu-btn" id="mobileMenuBtn">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div class="breadcrumb" id="breadcrumb">
+                        <span>Dashboard</span>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <div class="search-bar">
+                        <i class="fas fa-search"></i>
+                        <input type="text" placeholder="Search documents..." id="globalSearch">
+                    </div>
+                    <button class="icon-btn notification-btn">
+                        <i class="fas fa-bell"></i>
+                        <span class="badge">3</span>
+                    </button>
+                    <button class="icon-btn help-btn">
+                        <i class="fas fa-question-circle"></i>
+                    </button>
+                    <div class="user-avatar-header" id="headerUserAvatar">
+                        <img src="https://ui-avatars.com/api/?name=User&background=random" alt="User"
+                            id="headerUserAvatarImg">
+                        <div id="userDropdown" class="dropdown-menu">
+                            <a href="#" class="dropdown-item" onclick="app.navigateTo('settings')">
+                                <i class="fas fa-user-circle"></i> Profile
+                            </a>
+                            <a href="#" class="dropdown-item text-danger" onclick="app.logout()">
+                                <i class="fas fa-sign-out-alt"></i> Logout
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Page Content Container -->
+            <div class="page-content" id="pageContent">
+                <!-- Dynamic content will be loaded here -->
+            </div>
+        </main>
+    </div>
+
+    <!-- Modals Container -->
+    <div id="modalsContainer"></div>
+
+    <!-- Global Loader -->
+    <div id="globalLoader" class="global-loader">
+        <div class="loader-content">
+            <div class="loader-spinner"></div>
+            <div class="loader-text">Loading...</div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
+    <script src="data.js"></script>
+    <script src="api.js"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>
