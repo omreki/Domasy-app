@@ -81,7 +81,7 @@ class DomasApp {
                         <label class="form-label" style="font-weight: 500;">Email Address</label>
                         <div class="input-wrapper">
                             <i class="fas fa-envelope input-icon"></i>
-                            <input type="email" id="authEmail" class="form-input with-icon" required placeholder="name@company.com" value="admin@domasy.com">
+                            <input type="email" id="authEmail" class="form-input with-icon" required placeholder="name@company.com">
                         </div>
                     </div>
                     
@@ -92,7 +92,7 @@ class DomasApp {
                         </div>
                         <div class="input-wrapper">
                             <i class="fas fa-lock input-icon"></i>
-                            <input type="password" id="authPassword" class="form-input with-icon" required placeholder="••••••••" value="Admin@123456">
+                            <input type="password" id="authPassword" class="form-input with-icon" required placeholder="••••••••">
                         </div>
                     </div>
 
@@ -726,13 +726,13 @@ class DomasApp {
             if (doc.file.url.startsWith('http')) {
                 thumbnail = doc.file.url;
             } else {
-                thumbnail = `http://localhost:5000${doc.file.url.startsWith('/') ? '' : '/'}${doc.file.url}`;
+                thumbnail = `${API_URL.replace('/api', '')}${doc.file.url.startsWith('/') ? '' : '/'}${doc.file.url}`;
             }
         }
 
         // Ensure thumbnail has full URL if it exists
         if (thumbnail && !thumbnail.startsWith('http')) {
-            thumbnail = `http://localhost:5000${thumbnail.startsWith('/') ? '' : '/'}${thumbnail}`;
+            thumbnail = `${API_URL.replace('/api', '')}${thumbnail.startsWith('/') ? '' : '/'}${thumbnail}`;
         }
 
         // Team Members HTML

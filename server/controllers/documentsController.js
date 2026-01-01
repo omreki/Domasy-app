@@ -645,7 +645,6 @@ exports.uploadRevision = async (req, res) => {
         const { note } = req.body;
 
         // Prepare new file data
-        const baseUrl = process.env.API_URL || 'http://localhost:5000';
         const fileUrl = `/uploads/${req.file.filename}`;
 
         const fileData = {
@@ -654,7 +653,7 @@ exports.uploadRevision = async (req, res) => {
             mimetype: req.file.mimetype,
             size: req.file.size,
             path: req.file.path,
-            url: `${baseUrl}${fileUrl}`
+            url: fileUrl
         };
 
         // Update Document

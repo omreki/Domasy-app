@@ -15,8 +15,7 @@ const mapDoc = (doc) => {
 
     // If using local storage, ensure URL is absolute if it's relative
     if (mapped.file && mapped.file.url && !mapped.file.url.startsWith('http')) {
-        const baseUrl = process.env.API_URL || 'http://localhost:5000';
-        mapped.file.url = `${baseUrl}${mapped.file.url}`;
+        // We let the frontend handle prepending the base URL if needed
     }
 
     return mapped;
@@ -31,7 +30,6 @@ class DocumentService {
 
         // Save file info if provided (multer handles saving to disk)
         if (file) {
-            const baseUrl = process.env.API_URL || 'http://localhost:5000';
             const fileUrl = `/uploads/${file.filename}`;
 
             fileData = {
@@ -40,7 +38,7 @@ class DocumentService {
                 mimetype: file.mimetype,
                 size: file.size,
                 path: file.path, // Full path on disk
-                url: `${baseUrl}${fileUrl}`
+                url: fileUrl
             };
         }
 
