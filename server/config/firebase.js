@@ -25,12 +25,28 @@ if (process.env.FIREBASE_SERVICE_ACCOUNT_PATH) {
 // If no service account file, use environment variables
 if (!serviceAccount) {
     if (process.env.FIREBASE_PROJECT_ID) {
+        let privateKey = process.env.FIREBASE_PRIVATE_KEY;
+        if (privateKey) {
+            // Handle cases where the key is wrapped in quotes
+            if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
+                privateKey = privateKey.substring(1, privateKey.length - 1);
+            }
+            // Handle escaped newlines
+            privateKey = privateKey.replace(/\\n/g, '\n');
+        }
+
         serviceAccount = {
             type: "service_account",
             project_id: process.env.FIREBASE_PROJECT_ID,
-            private_key: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+            private_key: privateKey,
             client_email: process.env.FIREBASE_CLIENT_EMAIL,
         };
+
+        if (!privateKey) {
+            console.warn('⚠️  FIREBASE_PRIVATE_KEY is missing');
+        } else if (!privateKey.includes('-----BEGIN PRIVATE KEY-----')) {
+            console.warn('⚠️  FIREBASE_PRIVATE_KEY does not seem to have a valid header');
+        }
     }
 }
 
