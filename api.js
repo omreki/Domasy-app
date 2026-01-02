@@ -92,7 +92,14 @@ class API {
                     window.location.reload();
                     return;
                 }
-                throw new Error(data.message || 'API Error');
+
+                // If there's a detailed error from our catch-all in api/index.js, show it
+                let errorMessage = data.message || 'API Error';
+                if (data.error) {
+                    errorMessage += `: ${data.error}`;
+                }
+
+                throw new Error(errorMessage);
             }
 
             return data;
