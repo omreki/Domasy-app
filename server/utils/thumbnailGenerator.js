@@ -1,6 +1,11 @@
 const path = require('path');
 const fs = require('fs');
-const { pdf } = require('pdf-poppler');
+let pdf;
+try {
+    pdf = require('pdf-poppler').pdf;
+} catch (error) {
+    console.warn('⚠️  pdf-poppler module not found or failed to load. PDF thumbnails will be disabled.');
+}
 const supabase = require('../config/supabase');
 
 /**
@@ -9,6 +14,10 @@ const supabase = require('../config/supabase');
  * @returns {Promise<string|null>} - The URL of the uploaded thumbnail or null
  */
 const generateThumbnail = async (file) => {
+    if (!pdf) {
+        console.warn('Skipping thumbnail generation: pdf-poppler not available');
+        return null;
+    }
     try {
         console.log(`Generating thumbnail for: ${file.path}`);
 

@@ -15,7 +15,7 @@ const supabase = createClient(supabaseUrl, supabaseKey, {
     }
 });
 
-// Initialize storage buckets
+// Initialize storage buckets (Exported to be called manually if needed)
 const initBuckets = async () => {
     try {
         const buckets = ['avatars', 'branding', 'documents'];
@@ -27,9 +27,6 @@ const initBuckets = async () => {
             }
         }
 
-        // Initialize system_settings table if needed (rpc or simple query check)
-        // Note: Supabase doesn't allow 'CREATE TABLE' via JS client usually, 
-        // but we can check if it exists by querying it.
         const { error: tableError } = await supabase.from('system_settings').select('id').limit(1);
         if (tableError && tableError.message.includes('not found')) {
             console.warn('⚠️  system_settings table missing. Please run the SQL schema.');
@@ -39,6 +36,5 @@ const initBuckets = async () => {
     }
 };
 
-initBuckets();
-
 module.exports = supabase;
+module.exports.initBuckets = initBuckets;
