@@ -8,31 +8,51 @@ const ApprovalWorkflowService = require('../services/ApprovalWorkflowService');
 // @route   GET /api/dashboard/stats
 // @access  Private
 exports.getDashboardStats = async (req, res) => {
+    console.log(`[Dashboard] Fetching stats for user: ${req.user.email} (${req.user.role})`);
+
     try {
-        // Sequential fetch for dashboard stats to prevent hanging
-        const totalDocuments = await DocumentService.count();
-        const activeProjects = await ProjectService.count({ status: 'Active' });
-        const activeUsers = await UserService.count({ status: 'Active' });
-        const recentDocuments = await DocumentService.getAll({}, { limit: 5 });
-        const recentActivity = await AuditLogService.getAll({}, { limit: 5 });
+        // Sequential fetch with individual error handling to prevent total failure
+        let totalDocuments = 0, activeProjects = 0, activeUsers = 0, pendingApprovals = 0;
+        let recentDocuments = [], recentActivity = [];
+
+        try { totalDocuments = await DocumentService.count(); }
+        catch (e) { console.error('[Dashboard] Doc count failed:', e.message); }
+
+        try { activeProjects = await ProjectService.count({ status: 'Active' }); }
+        catch (e) { console.error('[Dashboard] Project count failed:', e.message); }
+
+        try { activeUsers = await UserService.count({ status: 'Active' }); }
+        catch (e) { console.error('[Dashboard] User count failed:', e.message); }
+
+        try { recentDocuments = await DocumentService.getAll({}, { limit: 5 }); }
+        catch (e) { console.error('[Dashboard] Doc fetch failed:', e.message); }
+
+        try { recentActivity = await AuditLogService.getAll({}, { limit: 5 }); }
+        catch (e) { console.error('[Dashboard] Activity fetch failed:', e.message); }
 
         // Pending approvals count
-        let pendingApprovals = 0;
-        if (req.user.role === 'Approver' || req.user.role === 'Super Admin') {
-            const workflows = await ApprovalWorkflowService.getPendingForUser(req.user.id);
-            pendingApprovals = workflows.length;
+        try {
+            if (req.user.role === 'Approver' || req.user.role === 'Super Admin') {
+                const workflows = await ApprovalWorkflowService.getPendingForUser(req.user.id);
+                pendingApprovals = workflows.length;
+            }
+        } catch (e) {
+            console.error('[Dashboard] Approvals fetch failed:', e.message);
         }
 
         // Manually Populate Recent Documents User
         const populatedRecentDocuments = await Promise.all(recentDocuments.map(async doc => {
             let user = { name: 'Unknown' };
-            if (doc.uploadedBy) {
-                // If it's already an object (from some previous populate?), extract ID
-                const uid = typeof doc.uploadedBy === 'object' ? doc.uploadedBy.id || doc.uploadedBy._id : doc.uploadedBy;
-                if (uid) {
-                    const u = await UserService.findById(uid);
-                    if (u) user = { name: u.name, avatar: u.avatar };
+            try {
+                if (doc.uploaded_by) {
+                    const uid = typeof doc.uploaded_by === 'object' ? doc.uploaded_by.id : doc.uploaded_by;
+                    if (uid) {
+                        const u = await UserService.findById(uid);
+                        if (u) user = { name: u.name, avatar: u.avatar };
+                    }
                 }
+            } catch (e) {
+                console.error(`[Dashboard] Failed to populate user for doc ${doc.id}:`, e.message);
             }
             return { ...doc, _id: doc.id, uploadedBy: user };
         }));
@@ -40,12 +60,16 @@ exports.getDashboardStats = async (req, res) => {
         // Manually Populate Recent Activity User
         const populatedRecentActivity = await Promise.all(recentActivity.map(async logItem => {
             let user = { name: 'Unknown' };
-            if (logItem.user) {
-                const uid = typeof logItem.user === 'object' ? logItem.user.id : logItem.user;
-                if (uid) {
-                    const u = await UserService.findById(uid);
-                    if (u) user = { name: u.name, avatar: u.avatar, role: u.role };
+            try {
+                if (logItem.user_id) {
+                    const uid = typeof logItem.user_id === 'object' ? logItem.user_id.id : logItem.user_id;
+                    if (uid) {
+                        const u = await UserService.findById(uid);
+                        if (u) user = { name: u.name, avatar: u.avatar, role: u.role };
+                    }
                 }
+            } catch (e) {
+                console.error(`[Dashboard] Failed to populate user for audit log ${logItem.id}:`, e.message);
             }
             return { ...logItem, _id: logItem.id, user };
         }));
@@ -64,9 +88,10 @@ exports.getDashboardStats = async (req, res) => {
             }
         });
     } catch (error) {
+        console.error('[Dashboard] Global failure:', error);
         res.status(500).json({
             success: false,
-            message: error.message
+            message: 'Failed to aggregate dashboard data: ' + error.message
         });
     }
 };
