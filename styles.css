@@ -293,8 +293,9 @@ img {
 }
 
 .nav-item:hover {
-    color: white;
+    color: var(--sidebar-active-text);
     background: rgba(255, 255, 255, 0.05);
+    opacity: 1;
 }
 
 .nav-item.active {
@@ -330,6 +331,10 @@ img {
 
 .user-profile:hover {
     background: rgba(255, 255, 255, 0.05);
+}
+
+.user-profile:hover .user-name {
+    color: var(--sidebar-active-text);
 }
 
 .user-avatar {
