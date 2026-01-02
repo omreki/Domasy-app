@@ -2,6 +2,7 @@ const ApprovalWorkflowService = require('../services/ApprovalWorkflowService');
 const DocumentService = require('../services/DocumentService');
 const AuditLogService = require('../services/AuditLogService');
 const UserService = require('../services/UserService');
+const NotificationService = require('../services/notificationService');
 
 // Helper to populate workflow assignees
 const populateWorkflowAssignees = async (workflow) => {
@@ -172,6 +173,29 @@ exports.approveStage = async (req, res) => {
                 details: note || 'Review complete. Document approved.',
                 ipAddress: req.ip
             });
+
+            // Notifications
+            if (currentApprover) {
+                // Notify next approver
+                const approverId = typeof currentApprover === 'object' ? (currentApprover.id || currentApprover._id) : currentApprover;
+                await NotificationService.createNotification(approverId, {
+                    title: 'Document Pending Review',
+                    message: `You have a new document "${document.title}" awaiting your approval.`,
+                    type: 'info',
+                    link: `document:${document.id}`
+                });
+            } else if (docStatus === 'Approved') {
+                // Notify uploader
+                const uploaderId = typeof document.uploaded_by === 'object' ? (document.uploaded_by.id || document.uploaded_by._id) : (document.uploaded_by || document.uploadedBy);
+                if (uploaderId) {
+                    await NotificationService.createNotification(uploaderId, {
+                        title: 'Document Approved',
+                        message: `Your document "${document.title}" has been fully approved.`,
+                        type: 'success',
+                        link: `document:${document.id}`
+                    });
+                }
+            }
         }
 
         const workflow = await populateWorkflowAssignees(updatedWorkflowData);
@@ -256,6 +280,17 @@ exports.rejectStage = async (req, res) => {
                 details: note,
                 ipAddress: req.ip
             });
+
+            // Notification for uploader
+            const uploaderId = typeof document.uploaded_by === 'object' ? (document.uploaded_by.id || document.uploaded_by._id) : (document.uploaded_by || document.uploadedBy);
+            if (uploaderId) {
+                await NotificationService.createNotification(uploaderId, {
+                    title: 'Document Rejected',
+                    message: `Your document "${document.title}" has been rejected. Reason: ${note}`,
+                    type: 'error',
+                    link: `document:${document.id}`
+                });
+            }
         }
 
         const workflow = await populateWorkflowAssignees(updatedWorkflowData);
@@ -334,6 +369,17 @@ exports.requestChanges = async (req, res) => {
                 details: note,
                 ipAddress: req.ip
             });
+
+            // Notification for uploader
+            const uploaderId = typeof document.uploaded_by === 'object' ? (document.uploaded_by.id || document.uploaded_by._id) : (document.uploaded_by || document.uploadedBy);
+            if (uploaderId) {
+                await NotificationService.createNotification(uploaderId, {
+                    title: 'Changes Requested',
+                    message: `Changes have been requested for your document "${document.title}". Note: ${note}`,
+                    type: 'warning',
+                    link: `document:${document.id}`
+                });
+            }
         }
 
         const workflow = await populateWorkflowAssignees(updatedWorkflowData);

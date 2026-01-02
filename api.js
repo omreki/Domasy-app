@@ -378,6 +378,29 @@ class API {
             throw error;
         }
     }
+
+    // Notifications
+    static async getNotifications() {
+        return this.request('/notifications');
+    }
+
+    static async markNotificationAsRead(id) {
+        return this.request(`/notifications/${id}/read`, {
+            method: 'PUT'
+        });
+    }
+
+    static async markAllNotificationsAsRead() {
+        return this.request('/notifications/mark-all-read', {
+            method: 'POST'
+        });
+    }
+
+    static async deleteNotification(id) {
+        return this.request(`/notifications/${id}`, {
+            method: 'DELETE'
+        });
+    }
 }
 
 // Export API globally

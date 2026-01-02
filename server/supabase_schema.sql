@@ -140,3 +140,20 @@ create table if not exists public.system_settings (
 alter table public.system_settings enable row level security;
 create policy "Anyone can read system settings" on public.system_settings for select using (true);
 create policy "Only authenticated users can update system settings" on public.system_settings for update using (auth.role() = 'authenticated');
+
+-- Notifications Table
+create table if not exists public.notifications (
+  id uuid default uuid_generate_v4() primary key,
+  user_id uuid references public.users(id) on delete cascade,
+  title text not null,
+  message text not null,
+  type text default 'info', -- 'info', 'success', 'warning', 'error'
+  link text, -- link to a document or project
+  read boolean default false,
+  created_at timestamptz default now()
+);
+
+-- RLS for Notifications
+alter table public.notifications enable row level security;
+create policy "Users can see their own notifications" on public.notifications for select using (auth.uid() = user_id);
+create policy "Users can update their own notifications" on public.notifications for update using (auth.uid() = user_id);

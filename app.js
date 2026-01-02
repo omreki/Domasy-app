@@ -37,7 +37,10 @@ class DomasApp {
             this.setupEventListeners();
             this.updateUserProfileUI();
             this.updateNavigationForRole(); // Update nav based on role
+            this.updateNotificationBadge();
             this.loadPage('dashboard');
+            // Poll for notifications every 30 seconds
+            setInterval(() => this.updateNotificationBadge(), 30000);
         }
     }
 
@@ -523,6 +526,10 @@ class DomasApp {
                         pageContent.innerHTML = await this.renderProjects();
                         this.setupProjectsPageListeners();
                     }
+                    break;
+                case 'notifications':
+                    pageContent.innerHTML = await this.renderNotifications();
+                    this.setupNotificationsListeners();
                     break;
                 default:
                     if (isAdmin) {
@@ -3629,10 +3636,330 @@ class DomasApp {
         }
     }
 
-    handleGlobalSearch(query) {
-        if (query.length < 2) return;
-        console.log('Global search for:', query);
-        // Implement real search if needed
+    async updateNotificationBadge() {
+        try {
+            const response = await API.getNotifications();
+            if (response.success) {
+                const unreadCount = response.data.filter(n => !n.read).length;
+                const badge = document.getElementById('notificationBadge');
+                if (badge) {
+                    badge.textContent = unreadCount > 9 ? '9+' : unreadCount;
+                    badge.style.display = unreadCount > 0 ? 'flex' : 'none';
+                }
+            }
+        } catch (error) {
+            console.error('Failed to update notification badge:', error);
+        }
+    }
+
+    async renderNotifications() {
+        try {
+            const response = await API.getNotifications();
+            const notifications = response.data || [];
+
+            return `
+                <div class="notifications-page">
+                    <div class="page-header mb-4" style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <h1 class="page-title">Notifications</h1>
+                            <p class="page-subtitle">Stay updated with the latest activities</p>
+                        </div>
+                        <div class="header-actions">
+                            <button class="btn btn-outline btn-sm" onclick="app.markAllNotificationsRead()" ${notifications.filter(n => !n.read).length === 0 ? 'disabled' : ''}>
+                                <i class="fas fa-check-double"></i> Mark all as read
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-body p-0">
+                            <div class="notifications-list">
+                                ${notifications.length > 0 ? notifications.map(n => `
+                                    <div class="notification-item ${n.read ? 'read' : 'unread'}" data-id="${n.id}">
+                                        <div class="notification-icon ${n.type || 'info'}">
+                                            <i class="fas ${this.getNotificationIcon(n.type)}"></i>
+                                        </div>
+                                        <div class="notification-content">
+                                            <div class="notification-header">
+                                                <h4 class="notification-title">${n.title}</h4>
+                                                <span class="notification-time">${this.formatRelativeTime(n.created_at)}</span>
+                                            </div>
+                                            <p class="notification-message">${n.message}</p>
+                                            ${n.link ? `<button class="btn btn-link btn-sm p-0 mt-2" onclick="app.handleNotificationLink('${n.link}', '${n.id}')">View Details</button>` : ''}
+                                        </div>
+                                        <div class="notification-actions">
+                                            ${!n.read ? `<button class="icon-btn sm" onclick="app.markNotificationRead('${n.id}')" title="Mark as read"><i class="fas fa-check"></i></button>` : ''}
+                                            <button class="icon-btn sm text-danger" onclick="app.deleteNotification('${n.id}')" title="Delete"><i class="fas fa-trash"></i></button>
+                                        </div>
+                                    </div>
+                                `).join('') : `
+                                    <div class="empty-state" style="padding: 40px; text-align: center;">
+                                        <i class="fas fa-bell-slash fa-3x mb-3" style="color: var(--gray-300);"></i>
+                                        <p style="color: var(--gray-500);">No notifications yet.</p>
+                                    </div>
+                                `}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <style>
+                    .notification-item {
+                        display: flex;
+                        padding: var(--spacing-lg);
+                        border-bottom: 1px solid var(--gray-100);
+                        transition: background 0.2s;
+                        position: relative;
+                    }
+                    .notification-item:last-child { border-bottom: none; }
+                    .notification-item.unread { background: var(--primary-50); }
+                    .notification-item.unread::before {
+                        content: '';
+                        position: absolute;
+                        left: 0;
+                        top: 0;
+                        bottom: 0;
+                        width: 4px;
+                        background: var(--primary-600);
+                    }
+                    .notification-icon {
+                        width: 40px;
+                        height: 40px;
+                        border-radius: 50%;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        margin-right: var(--spacing-md);
+                        flex-shrink: 0;
+                    }
+                    .notification-icon.info { background: var(--info-100); color: var(--info-600); }
+                    .notification-icon.success { background: var(--success-100); color: var(--success-600); }
+                    .notification-icon.warning { background: var(--warning-100); color: var(--warning-600); }
+                    .notification-icon.error { background: var(--error-100); color: var(--error-600); }
+                    
+                    .notification-content { flex: 1; }
+                    .notification-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px; }
+                    .notification-title { margin: 0; font-size: 15px; font-weight: 600; color: var(--text-primary); }
+                    .notification-time { font-size: 12px; color: var(--gray-500); }
+                    .notification-message { margin: 0; font-size: 14px; color: var(--gray-600); }
+                    
+                    .notification-actions { display: flex; gap: 8px; opacity: 0; transition: opacity 0.2s; }
+                    .notification-item:hover .notification-actions { opacity: 1; }
+                </style>
+            `;
+        } catch (error) {
+            console.error('Failed to render notifications:', error);
+            return `<div class="error-state">Failed to load notifications.</div>`;
+        }
+    }
+
+    getNotificationIcon(type) {
+        switch (type) {
+            case 'success': return 'fa-check-circle';
+            case 'warning': return 'fa-exclamation-triangle';
+            case 'error': return 'fa-exclamation-circle';
+            default: return 'fa-info-circle';
+        }
+    }
+
+    formatRelativeTime(dateString) {
+        const date = new Date(dateString);
+        const now = new Date();
+        const diffInSeconds = Math.floor((now - date) / 1000);
+
+        if (diffInSeconds < 60) return 'Just now';
+        const diffInMinutes = Math.floor(diffInSeconds / 60);
+        if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+        const diffInHours = Math.floor(diffInMinutes / 60);
+        if (diffInHours < 24) return `${diffInHours}h ago`;
+        const diffInDays = Math.floor(diffInHours / 24);
+        if (diffInDays < 7) return `${diffInDays}d ago`;
+        return date.toLocaleDateString();
+    }
+
+    async markNotificationRead(id) {
+        try {
+            await API.markNotificationAsRead(id);
+            this.updateNotificationBadge();
+            if (this.currentPage === 'notifications') {
+                this.loadPage('notifications');
+            }
+        } catch (error) {
+            console.error('Failed to mark notification as read:', error);
+        }
+    }
+
+    async markAllNotificationsRead() {
+        try {
+            await API.markAllNotificationsAsRead();
+            this.updateNotificationBadge();
+            if (this.currentPage === 'notifications') {
+                this.loadPage('notifications');
+            }
+        } catch (error) {
+            console.error('Failed to mark all notifications as read:', error);
+        }
+    }
+
+    async deleteNotification(id) {
+        if (!confirm('Are you sure you want to delete this notification?')) return;
+        try {
+            await API.deleteNotification(id);
+            this.updateNotificationBadge();
+            if (this.currentPage === 'notifications') {
+                this.loadPage('notifications');
+            }
+        } catch (error) {
+            console.error('Failed to delete notification:', error);
+        }
+    }
+
+    handleNotificationLink(link, id) {
+        this.markNotificationRead(id);
+        // Link expected format: "page:id" or just "page"
+        if (link.includes(':')) {
+            const [page, pId] = link.split(':');
+            if (page === 'document') {
+                this.viewDocument(pId);
+            } else if (page === 'project') {
+                this.viewProject(pId);
+            }
+        } else {
+            this.navigateTo(link);
+        }
+    }
+
+    setupNotificationsListeners() {
+        // Handled by inline onclicks for simplicity in this template
+    }
+
+    async handleGlobalSearch(query) {
+        if (!query || query.length < 2) {
+            if (this.isSearching) {
+                this.isSearching = false;
+                this.loadPage(this.currentPage);
+            }
+            return;
+        }
+
+        this.isSearching = true;
+        const pageContent = document.getElementById('pageContent');
+        pageContent.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:400px;"><i class="fas fa-spinner fa-spin fa-2x" style="color:var(--primary-600)"></i></div>';
+
+        try {
+            // Search across documents and projects
+            const [docsRes, projectsRes] = await Promise.all([
+                API.getDocuments({ search: query }),
+                API.getProjects() // Backend might not support search yet, we'll filter client side if needed
+            ]);
+
+            const documents = docsRes.data.documents || [];
+            const filteredProjects = (projectsRes.data || []).filter(p =>
+                p.name.toLowerCase().includes(query.toLowerCase()) ||
+                (p.description && p.description.toLowerCase().includes(query.toLowerCase()))
+            );
+
+            if (documents.length === 0 && filteredProjects.length === 0) {
+                pageContent.innerHTML = `
+                    <div style="text-align:center;padding:100px 20px;">
+                        <i class="fas fa-search fa-4x mb-4" style="color:var(--gray-300)"></i>
+                        <h3>No results found for "${query}"</h3>
+                        <p style="color:var(--gray-500)">Try different keywords or check your spelling.</p>
+                        <button class="btn btn-primary mt-4" onclick="document.getElementById('globalSearch').value=''; app.handleGlobalSearch('')">Clear Search</button>
+                    </div>
+                `;
+                return;
+            }
+
+            pageContent.innerHTML = `
+                <div class="search-results">
+                    <div class="page-header mb-4">
+                        <h1 class="page-title">Search Results</h1>
+                        <p class="page-subtitle">Showing results for "${query}"</p>
+                    </div>
+
+                    ${filteredProjects.length > 0 ? `
+                        <section class="mb-5">
+                            <h2 class="section-title mb-3">Projects (${filteredProjects.length})</h2>
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                ${filteredProjects.map(project => `
+                                    <div class="card clickable" onclick="app.viewProject('${project.id}')">
+                                        <div class="card-body">
+                                            <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:12px;">
+                                                <div class="project-icon" style="width:40px; height:40px; background:var(--primary-100); color:var(--primary-600); border-radius:8px; display:flex; align-items:center; justify-content:center;">
+                                                    <i class="fas fa-folder"></i>
+                                                </div>
+                                                <span class="badge badge-info">${project.status}</span>
+                                            </div>
+                                            <h3 style="font-size:16px; font-weight:600; margin-bottom:8px;">${project.name}</h3>
+                                            <p style="font-size:14px; color:var(--gray-500); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">${project.description || 'No description'}</p>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </section>
+                    ` : ''}
+
+                    ${documents.length > 0 ? `
+                        <section>
+                            <h2 class="section-title mb-3">Documents (${documents.length})</h2>
+                            <div class="card">
+                                <div class="card-body p-0">
+                                    <div class="document-list">
+                                        ${documents.map(doc => this.renderDocumentListItem(doc)).join('')}
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                    ` : ''}
+                </div>
+            `;
+        } catch (error) {
+            console.error('Search error:', error);
+            pageContent.innerHTML = `<div class="error-state">Search failed: ${error.message}</div>`;
+        }
+    }
+
+    showHelp() {
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay active';
+        modal.innerHTML = `
+            <div class="modal-container" style="max-width: 600px;">
+                <div class="modal-header">
+                    <h2 class="modal-title">Help & Support</h2>
+                    <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="help-section mb-4">
+                        <h3 style="font-size:18px; font-weight:600; margin-bottom:12px;">Getting Started</h3>
+                        <p style="color:var(--gray-600); line-height:1.6;">Welcome to Domasy, your modern Document Management System. Here you can upload documents, manage projects, and collaborate with your team through intuitive approval workflows.</p>
+                    </div>
+                    
+                    <div class="help-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+                        <div class="help-card" style="padding:15px; border:1px solid var(--gray-200); border-radius:8px;">
+                            <i class="fas fa-file-upload mb-2" style="color:var(--primary-600)"></i>
+                            <h4 style="font-weight:600; margin-bottom:5px;">Uploading</h4>
+                            <p style="font-size:13px; color:var(--gray-500);">Go to Documents page and click "Upload Document" to start.</p>
+                        </div>
+                        <div class="help-card" style="padding:15px; border:1px solid var(--gray-200); border-radius:8px;">
+                            <i class="fas fa-check-circle mb-2" style="color:var(--success-600);"></i>
+                            <h4 style="font-weight:600; margin-bottom:5px;">Approvals</h4>
+                            <p style="font-size:13px; color:var(--gray-500);">Check your notifications for documents awaiting your review.</p>
+                        </div>
+                    </div>
+
+                    <div class="mt-4" style="padding:15px; background:var(--gray-50); border-radius:8px;">
+                        <h4 style="font-weight:600; margin-bottom:5px;">Need more help?</h4>
+                        <p style="font-size:14px; color:var(--gray-600);">Contact our support team at <a href="mailto:support@domasy.com" style="color:var(--primary-600);">support@domasy.com</a></p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">Close</button>
+                    <button class="btn btn-primary" onclick="window.open('https://docs.domasy.com', '_blank')">View Full Documentation</button>
+                </div>
+            </div>
+        `;
+        document.getElementById('modalsContainer').appendChild(modal);
     }
     showLoader(text = 'Loading...') {
         const loader = document.getElementById('globalLoader');

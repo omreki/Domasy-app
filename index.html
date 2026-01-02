@@ -99,11 +99,11 @@
                         <i class="fas fa-search"></i>
                         <input type="text" placeholder="Search documents..." id="globalSearch">
                     </div>
-                    <button class="icon-btn notification-btn">
+                    <button class="icon-btn notification-btn" onclick="app.navigateTo('notifications')">
                         <i class="fas fa-bell"></i>
-                        <span class="badge">3</span>
+                        <span class="badge" id="notificationBadge" style="display: none;">0</span>
                     </button>
-                    <button class="icon-btn help-btn">
+                    <button class="icon-btn help-btn" onclick="app.showHelp()">
                         <i class="fas fa-question-circle"></i>
                     </button>
                     <div class="user-avatar-header" id="headerUserAvatar">

@@ -40,6 +40,7 @@ const auditRoutes = require('./routes/audit');
 const dashboardRoutes = require('./routes/dashboard');
 const categoryRoutes = require('./routes/categories');
 const settingsRoutes = require('./routes/settings');
+const notificationRoutes = require('./routes/notifications');
 
 // Initialize express app
 const app = express();
@@ -135,6 +136,7 @@ app.use('/api/audit', auditRoutes);
 app.use('/api/dashboard', cacheMiddleware(120000), dashboardRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
