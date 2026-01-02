@@ -138,10 +138,12 @@ class DomasApp {
             document.documentElement.style.removeProperty('--sidebar-active-indicator');
         }
 
-        if (this.branding.sidebarRoleColor) {
-            document.documentElement.style.setProperty('--sidebar-role-text', this.branding.sidebarRoleColor);
+        // Unified Active Item / Role Color
+        const activeTextColor = this.branding.sidebarActiveTextColor || this.branding.sidebarRoleColor;
+        if (activeTextColor) {
+            document.documentElement.style.setProperty('--sidebar-active-text', activeTextColor);
         } else {
-            document.documentElement.style.removeProperty('--sidebar-role-text');
+            document.documentElement.style.removeProperty('--sidebar-active-text');
         }
     }
 
@@ -2025,10 +2027,10 @@ class DomasApp {
                                     </div>
 
                                     <div class="form-group" style="margin-top: var(--spacing-md);">
-                                        <label class="form-label">User Role Text Color</label>
+                                        <label class="form-label">Active Item Text Color</label>
                                         <div style="display: flex; align-items: center; gap: var(--spacing-md);">
-                                            <input type="color" class="form-input" id="brandingSidebarRoleColor" value="${this.branding.sidebarRoleColor || '#a0aec0'}" style="width: 50px; padding: 2px; height: 38px;">
-                                            <span style="font-size: var(--font-size-sm); color: var(--gray-500);">${this.branding.sidebarRoleColor || '#a0aec0'}</span>
+                                            <input type="color" class="form-input" id="brandingSidebarActiveTextColor" value="${this.branding.sidebarActiveTextColor || this.branding.sidebarRoleColor || '#ffffff'}" style="width: 50px; padding: 2px; height: 38px;">
+                                            <span style="font-size: var(--font-size-sm); color: var(--gray-500);">${this.branding.sidebarActiveTextColor || this.branding.sidebarRoleColor || '#ffffff (Default)'}</span>
                                         </div>
                                     </div>
 
@@ -2153,7 +2155,7 @@ class DomasApp {
         const sidebarTextColor = document.getElementById('brandingSidebarTextColor').value;
         const sidebarActiveBg = document.getElementById('brandingSidebarActiveBg').value;
         const sidebarActiveIndicator = document.getElementById('brandingSidebarActiveIndicator').value;
-        const sidebarRoleColor = document.getElementById('brandingSidebarRoleColor').value;
+        const sidebarActiveTextColor = document.getElementById('brandingSidebarActiveTextColor').value;
 
         this.showLoader();
 
@@ -2165,7 +2167,7 @@ class DomasApp {
                 sidebarTextColor,
                 sidebarActiveBg,
                 sidebarActiveIndicator,
-                sidebarRoleColor
+                sidebarActiveTextColor
             });
             if (response.success) {
                 this.branding.name = name;
@@ -2174,7 +2176,7 @@ class DomasApp {
                 this.branding.sidebarTextColor = sidebarTextColor;
                 this.branding.sidebarActiveBg = sidebarActiveBg;
                 this.branding.sidebarActiveIndicator = sidebarActiveIndicator;
-                this.branding.sidebarRoleColor = sidebarRoleColor;
+                this.branding.sidebarActiveTextColor = sidebarActiveTextColor;
                 this.updateBrandingUI();
                 this.showToast('success', 'Branding Updated', 'System branding settings have been saved.');
             }

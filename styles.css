@@ -105,7 +105,7 @@
     --sidebar-text: #ffffff;
     --sidebar-active-bg: rgba(79, 70, 229, 0.15);
     --sidebar-active-indicator: var(--primary-400);
-    --sidebar-role-text: rgba(255, 255, 255, 0.6);
+    --sidebar-active-text: #ffffff;
     --header-height: 64px;
 }
 
@@ -298,7 +298,7 @@ img {
 }
 
 .nav-item.active {
-    color: white;
+    color: var(--sidebar-active-text);
     background: var(--sidebar-active-bg);
 }
 
@@ -350,7 +350,7 @@ img {
 
 .user-role {
     font-size: var(--font-size-xs);
-    color: var(--sidebar-role-text);
+    color: var(--sidebar-active-text);
 }
 
 .user-menu-btn {
