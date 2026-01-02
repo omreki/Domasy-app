@@ -9,6 +9,46 @@ const supabase = require('../config/supabase');
 const { generateThumbnail } = require('../utils/thumbnailGenerator');
 
 
+// Helper to populate team members from workflow
+const populateTeamMembers = async (documents) => {
+    const workflows = await Promise.all(documents.map(doc => ApprovalWorkflowService.findByDocumentId(doc.id)));
+
+    const workflowUserIds = new Set();
+    workflows.forEach(wf => {
+        if (wf && wf.stages) {
+            wf.stages.forEach(stage => {
+                if (stage.assignee) workflowUserIds.add(stage.assignee);
+            });
+        }
+    });
+
+    const teamUsersMap = {};
+    const userIdsArray = Array.from(workflowUserIds);
+
+    if (userIdsArray.length > 0) {
+        const { data: users, error } = await supabase
+            .from('users')
+            .select('id, name, email, avatar, role')
+            .in('id', userIdsArray);
+
+        if (!error && users) {
+            users.forEach(user => {
+                teamUsersMap[user.id] = user;
+            });
+        }
+    }
+
+    return documents.map((doc, index) => {
+        const wf = workflows[index];
+        let teamMembers = [];
+        if (wf && wf.stages) {
+            const uniqueIds = [...new Set(wf.stages.map(s => s.assignee).filter(id => id))];
+            teamMembers = uniqueIds.map(uid => teamUsersMap[uid]).filter(u => u);
+        }
+        return { ...doc, teamMembers };
+    });
+};
+
 // Helper to manual populate user details
 const populateUsers = async (documents) => {
     // Collect unique user IDs
@@ -57,7 +97,7 @@ const populateUsers = async (documents) => {
     }
 
     // Attach objects
-    return documents.map(doc => {
+    const populated = documents.map(doc => {
         const d = { ...doc, _id: doc.id };
 
         // Normalize fields
@@ -71,6 +111,8 @@ const populateUsers = async (documents) => {
 
         return d;
     });
+
+    return await populateTeamMembers(populated);
 };
 
 // @desc    Get all documents
@@ -110,49 +152,7 @@ exports.getDocuments = async (req, res) => {
 
         const populatedDocs = await populateUsers(filteredDocs);
 
-        // Populate Team Members from Workflow (Reviewers/Assignees)
-        const workflows = await Promise.all(populatedDocs.map(doc => ApprovalWorkflowService.findByDocumentId(doc.id)));
-
-        // Collect all potential user IDs from workflows
-        const workflowUserIds = new Set();
-        workflows.forEach(wf => {
-            if (wf && wf.stages) {
-                wf.stages.forEach(stage => {
-                    if (stage.assignee) workflowUserIds.add(stage.assignee);
-                });
-            }
-        });
-
-        // Fetch user details for these IDs
-        // Fetch user details for these IDs concurrently
-        const teamUsersMap = {};
-        const userIdsArray = Array.from(workflowUserIds);
-
-        // Use Supabase 'in' query for efficiency
-        if (userIdsArray.length > 0) {
-            const { data: users, error } = await supabase
-                .from('users')
-                .select('id, name, email, avatar, role')
-                .in('id', userIdsArray);
-
-            if (!error && users) {
-                users.forEach(user => {
-                    teamUsersMap[user.id] = user;
-                });
-            }
-        }
-
-        // Attach teamMembers to documents
-        const finalDocs = populatedDocs.map((doc, index) => {
-            const wf = workflows[index];
-            let teamMembers = [];
-            if (wf && wf.stages) {
-                // Get unique assignees
-                const uniqueIds = [...new Set(wf.stages.map(s => s.assignee).filter(id => id))];
-                teamMembers = uniqueIds.map(uid => teamUsersMap[uid]).filter(u => u);
-            }
-            return { ...doc, teamMembers };
-        });
+        const finalDocs = await populateUsers(filteredDocs);
 
         res.status(200).json({
             success: true,
@@ -236,7 +236,11 @@ exports.uploadDocument = async (req, res) => {
             });
         }
 
-        const { title, description, category, approvalStage, project, currentApprover, reviewers } = req.body;
+        const { title, description, category, tags, approvalStage, project, currentApprover, reviewers } = req.body;
+
+        // Use tags as category if category is missing (from frontend mismatch)
+        const finalCategory = category || tags || 'General';
+        const finalTags = Array.isArray(tags) ? tags : (tags ? [tags] : [finalCategory]);
 
         // Parse reviewers if provided as JSON string
         let reviewerIds = [];
@@ -260,12 +264,13 @@ exports.uploadDocument = async (req, res) => {
         const docData = {
             title,
             description,
-            category,
+            category: finalCategory,
             approvalStage: approvalStage || 'Manager Review',
             project,
             currentApprover: reviewerIds.length > 0 ? reviewerIds[0] : currentApprover,
             uploadedBy: req.user.id,
             status: reviewerIds.length > 0 ? 'In Review' : 'Uploaded',
+            tags: finalTags,
             thumbnail
         };
 
@@ -327,10 +332,15 @@ exports.uploadDocument = async (req, res) => {
             ipAddress: req.ip
         });
 
+        const [populatedDoc] = await populateUsers([document]);
+        const teamMembers = populatedDoc.teamMembers || [];
+
         res.status(201).json({
             success: true,
             message: 'Document uploaded successfully',
-            data: { document: { ...document, _id: document.id } }
+            data: {
+                document: { ...populatedDoc, teamMembers }
+            }
         });
     } catch (error) {
         res.status(500).json({

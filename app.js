@@ -917,9 +917,14 @@ class DomasApp {
                 <div class="document-card-content">
                     <div class="document-card-header" style="justify-content: space-between;">
                         <span class="badge badge-${statusColors[doc.status] || 'gray'}">${doc.status}</span>
-                        <span class="badge badge-gray" style="max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px;">
-                            <i class="fas fa-folder" style="margin-right:4px;"></i>${project}
-                        </span>
+                        <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+                            <span class="badge badge-gray" style="font-size: 10px;">
+                                <i class="fas fa-tag" style="margin-right:4px;"></i>${doc.category || 'General'}
+                            </span>
+                            <span class="badge badge-gray" style="max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px;">
+                                <i class="fas fa-folder" style="margin-right:4px;"></i>${project}
+                            </span>
+                        </div>
                     </div>
                     
                     <h3 class="document-card-title">${doc.title}</h3>
