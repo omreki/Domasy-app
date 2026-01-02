@@ -121,6 +121,28 @@ class DomasApp {
         } else {
             document.documentElement.style.removeProperty('--sidebar-text');
         }
+
+        if (this.branding.sidebarActiveBg) {
+            // If it's a hex, we might want to add transparency
+            const activeBg = this.branding.sidebarActiveBg.startsWith('#')
+                ? `${this.branding.sidebarActiveBg}26` // Add ~15% transparency (26 in hex)
+                : this.branding.sidebarActiveBg;
+            document.documentElement.style.setProperty('--sidebar-active-bg', activeBg);
+        } else {
+            document.documentElement.style.removeProperty('--sidebar-active-bg');
+        }
+
+        if (this.branding.sidebarActiveIndicator) {
+            document.documentElement.style.setProperty('--sidebar-active-indicator', this.branding.sidebarActiveIndicator);
+        } else {
+            document.documentElement.style.removeProperty('--sidebar-active-indicator');
+        }
+
+        if (this.branding.sidebarRoleColor) {
+            document.documentElement.style.setProperty('--sidebar-role-text', this.branding.sidebarRoleColor);
+        } else {
+            document.documentElement.style.removeProperty('--sidebar-role-text');
+        }
     }
 
     updateUserProfileUI() {
@@ -1985,6 +2007,31 @@ class DomasApp {
                                         </div>
                                     </div>
 
+                                    <div class="grid-2" style="margin-top: var(--spacing-md);">
+                                        <div class="form-group">
+                                            <label class="form-label">Active Item Background</label>
+                                            <div style="display: flex; align-items: center; gap: var(--spacing-md);">
+                                                <input type="color" class="form-input" id="brandingSidebarActiveBg" value="${this.branding.sidebarActiveBg || '#4f46e5'}" style="width: 50px; padding: 2px; height: 38px;">
+                                                <span style="font-size: var(--font-size-sm); color: var(--gray-500);">${this.branding.sidebarActiveBg || '#4f46e5'}</span>
+                                            </div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label">Active Item Indicator</label>
+                                            <div style="display: flex; align-items: center; gap: var(--spacing-md);">
+                                                <input type="color" class="form-input" id="brandingSidebarActiveIndicator" value="${this.branding.sidebarActiveIndicator || '#818cf8'}" style="width: 50px; padding: 2px; height: 38px;">
+                                                <span style="font-size: var(--font-size-sm); color: var(--gray-500);">${this.branding.sidebarActiveIndicator || '#818cf8'}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group" style="margin-top: var(--spacing-md);">
+                                        <label class="form-label">User Role Text Color</label>
+                                        <div style="display: flex; align-items: center; gap: var(--spacing-md);">
+                                            <input type="color" class="form-input" id="brandingSidebarRoleColor" value="${this.branding.sidebarRoleColor || '#a0aec0'}" style="width: 50px; padding: 2px; height: 38px;">
+                                            <span style="font-size: var(--font-size-sm); color: var(--gray-500);">${this.branding.sidebarRoleColor || '#a0aec0'}</span>
+                                        </div>
+                                    </div>
+
                                     <div class="form-group">
                                         <label class="form-label">System Logo</label>
                                         <div style="display: flex; align-items: start; gap: var(--spacing-lg); margin-top: 10px;">
@@ -2104,16 +2151,30 @@ class DomasApp {
         const displayMode = document.getElementById('brandingDisplayMode').value;
         const sidebarColor = document.getElementById('brandingSidebarColor').value;
         const sidebarTextColor = document.getElementById('brandingSidebarTextColor').value;
+        const sidebarActiveBg = document.getElementById('brandingSidebarActiveBg').value;
+        const sidebarActiveIndicator = document.getElementById('brandingSidebarActiveIndicator').value;
+        const sidebarRoleColor = document.getElementById('brandingSidebarRoleColor').value;
 
         this.showLoader();
 
         try {
-            const response = await API.updateSettings('branding', { name, displayMode, sidebarColor, sidebarTextColor });
+            const response = await API.updateSettings('branding', {
+                name,
+                displayMode,
+                sidebarColor,
+                sidebarTextColor,
+                sidebarActiveBg,
+                sidebarActiveIndicator,
+                sidebarRoleColor
+            });
             if (response.success) {
                 this.branding.name = name;
                 this.branding.displayMode = displayMode;
                 this.branding.sidebarColor = sidebarColor;
                 this.branding.sidebarTextColor = sidebarTextColor;
+                this.branding.sidebarActiveBg = sidebarActiveBg;
+                this.branding.sidebarActiveIndicator = sidebarActiveIndicator;
+                this.branding.sidebarRoleColor = sidebarRoleColor;
                 this.updateBrandingUI();
                 this.showToast('success', 'Branding Updated', 'System branding settings have been saved.');
             }

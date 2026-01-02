@@ -103,6 +103,9 @@
     --sidebar-width: 260px;
     --sidebar-bg: var(--navy-800);
     --sidebar-text: #ffffff;
+    --sidebar-active-bg: rgba(79, 70, 229, 0.15);
+    --sidebar-active-indicator: var(--primary-400);
+    --sidebar-role-text: rgba(255, 255, 255, 0.6);
     --header-height: 64px;
 }
 
@@ -296,11 +299,12 @@ img {
 
 .nav-item.active {
     color: white;
-    background: rgba(79, 70, 229, 0.15);
+    background: var(--sidebar-active-bg);
 }
 
 .nav-item.active::before {
     transform: scaleY(1);
+    background: var(--sidebar-active-indicator);
 }
 
 .nav-item i {
@@ -346,7 +350,7 @@ img {
 
 .user-role {
     font-size: var(--font-size-xs);
-    color: rgba(255, 255, 255, 0.6);
+    color: var(--sidebar-role-text);
 }
 
 .user-menu-btn {
