@@ -108,6 +108,13 @@ class DomasApp {
         if (loginSubtitle) {
             loginSubtitle.textContent = `Sign in to access your secure ${systemName} workspace`;
         }
+
+        // Apply Sidebar Color
+        if (this.branding.sidebarColor) {
+            document.documentElement.style.setProperty('--sidebar-bg', this.branding.sidebarColor);
+        } else {
+            document.documentElement.style.removeProperty('--sidebar-bg');
+        }
     }
 
     updateUserProfileUI() {
@@ -1955,6 +1962,14 @@ class DomasApp {
                                         </select>
                                     </div>
                                     
+                                    <div class="form-group" style="margin-top: var(--spacing-md);">
+                                        <label class="form-label">Sidebar Theme Color</label>
+                                        <div style="display: flex; align-items: center; gap: var(--spacing-md);">
+                                            <input type="color" class="form-input" id="brandingSidebarColor" value="${this.branding.sidebarColor || '#243B53'}" style="width: 50px; padding: 2px; height: 38px;">
+                                            <span style="font-size: var(--font-size-sm); color: var(--gray-500);">${this.branding.sidebarColor || '#243B53 (Default)'}</span>
+                                        </div>
+                                    </div>
+
                                     <div class="form-group">
                                         <label class="form-label">System Logo</label>
                                         <div style="display: flex; align-items: start; gap: var(--spacing-lg); margin-top: 10px;">
@@ -2072,14 +2087,16 @@ class DomasApp {
         e.preventDefault();
         const name = document.getElementById('brandingName').value;
         const displayMode = document.getElementById('brandingDisplayMode').value;
+        const sidebarColor = document.getElementById('brandingSidebarColor').value;
 
         this.showLoader();
 
         try {
-            const response = await API.updateSettings('branding', { name, displayMode });
+            const response = await API.updateSettings('branding', { name, displayMode, sidebarColor });
             if (response.success) {
                 this.branding.name = name;
                 this.branding.displayMode = displayMode;
+                this.branding.sidebarColor = sidebarColor;
                 this.updateBrandingUI();
                 this.showToast('success', 'Branding Updated', 'System branding settings have been saved.');
             }

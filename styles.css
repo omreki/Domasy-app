@@ -101,6 +101,7 @@
 
     /* Layout */
     --sidebar-width: 260px;
+    --sidebar-bg: var(--navy-800);
     --header-height: 64px;
 }
 
@@ -166,7 +167,7 @@ img {
 /* Sidebar */
 .sidebar {
     width: var(--sidebar-width);
-    background: var(--navy-800);
+    background: var(--sidebar-bg);
     color: white;
     display: flex;
     flex-direction: column;
