@@ -3652,10 +3652,18 @@ class DomasApp {
         }
     }
 
-    async renderNotifications() {
+    async renderNotifications(filter = 'all') {
         try {
+            this.currentNotificationFilter = filter;
             const response = await API.getNotifications();
-            const notifications = response.data || [];
+            let notifications = response.data || [];
+
+            // Apply filter
+            if (filter === 'unread') {
+                notifications = notifications.filter(n => !n.read);
+            } else if (filter === 'read') {
+                notifications = notifications.filter(n => n.read);
+            }
 
             return `
                 <div class="notifications-page">
@@ -3665,10 +3673,17 @@ class DomasApp {
                             <p class="page-subtitle">Stay updated with the latest activities</p>
                         </div>
                         <div class="header-actions">
-                            <button class="btn btn-outline btn-sm" onclick="app.markAllNotificationsRead()" ${notifications.filter(n => !n.read).length === 0 ? 'disabled' : ''}>
+                            <button class="btn btn-outline btn-sm" onclick="app.markAllNotificationsRead()" ${notifications.some(n => !n.read) ? '' : 'disabled'}>
                                 <i class="fas fa-check-double"></i> Mark all as read
                             </button>
                         </div>
+                    </div>
+
+                    <!-- Notification Filters -->
+                    <div class="notifications-tabs mb-4">
+                        <button class="tab-btn ${filter === 'all' ? 'active' : ''}" onclick="app.loadNotifications('all')">All</button>
+                        <button class="tab-btn ${filter === 'unread' ? 'active' : ''}" onclick="app.loadNotifications('unread')">Unread</button>
+                        <button class="tab-btn ${filter === 'read' ? 'active' : ''}" onclick="app.loadNotifications('read')">Read</button>
                     </div>
 
                     <div class="card">
@@ -3693,9 +3708,9 @@ class DomasApp {
                                         </div>
                                     </div>
                                 `).join('') : `
-                                    <div class="empty-state" style="padding: 40px; text-align: center;">
-                                        <i class="fas fa-bell-slash fa-3x mb-3" style="color: var(--gray-300);"></i>
-                                        <p style="color: var(--gray-500);">No notifications yet.</p>
+                                    <div class="empty-state" style="padding: 60px; text-align: center;">
+                                        <i class="fas ${filter === 'unread' ? 'fa-check-double' : 'fa-bell-slash'} fa-3x mb-3" style="color: var(--gray-300);"></i>
+                                        <p style="color: var(--gray-500);">No ${filter === 'all' ? '' : filter} notifications found.</p>
                                     </div>
                                 `}
                             </div>
@@ -3704,6 +3719,26 @@ class DomasApp {
                 </div>
 
                 <style>
+                    .notifications-tabs {
+                        display: flex;
+                        gap: 12px;
+                        border-bottom: 1px solid var(--gray-200);
+                        padding-bottom: 12px;
+                    }
+                    .tab-btn {
+                        background: none;
+                        border: none;
+                        padding: 8px 16px;
+                        border-radius: 6px;
+                        font-weight: 500;
+                        color: var(--gray-500);
+                        cursor: pointer;
+                        transition: all 0.2s;
+                    }
+                    .tab-btn:hover { background: var(--gray-100); color: var(--gray-700); }
+                    .tab-btn.active { background: var(--primary-100); color: var(--primary-700); }
+                    
+                    /* Existing list styles */
                     .notification-item {
                         display: flex;
                         padding: var(--spacing-lg);
@@ -3829,6 +3864,12 @@ class DomasApp {
         }
     }
 
+    async loadNotifications(filter = 'all') {
+        const pageContent = document.getElementById('pageContent');
+        pageContent.innerHTML = await this.renderNotifications(filter);
+        this.setupNotificationsListeners();
+    }
+
     setupNotificationsListeners() {
         // Handled by inline onclicks for simplicity in this template
     }
@@ -3853,9 +3894,12 @@ class DomasApp {
                 API.getProjects() // Backend might not support search yet, we'll filter client side if needed
             ]);
 
-            const documents = docsRes.data.documents || [];
-            const filteredProjects = (projectsRes.data || []).filter(p =>
-                p.name.toLowerCase().includes(query.toLowerCase()) ||
+            const documents = (docsRes.data && Array.isArray(docsRes.data.documents)) ? docsRes.data.documents : [];
+            const allProjects = (projectsRes.data && Array.isArray(projectsRes.data.projects)) ? projectsRes.data.projects :
+                (Array.isArray(projectsRes.data) ? projectsRes.data : []);
+
+            const filteredProjects = allProjects.filter(p =>
+                (p.name && p.name.toLowerCase().includes(query.toLowerCase())) ||
                 (p.description && p.description.toLowerCase().includes(query.toLowerCase()))
             );
 
@@ -3924,9 +3968,12 @@ class DomasApp {
         const modal = document.createElement('div');
         modal.className = 'modal-overlay active';
         modal.innerHTML = `
-            <div class="modal-container" style="max-width: 600px;">
+            <div class="modal" style="max-width: 600px;">
                 <div class="modal-header">
-                    <h2 class="modal-title">Help & Support</h2>
+                    <div>
+                        <h2 class="modal-title">Help & Support</h2>
+                        <p class="modal-subtitle">Learn how to use Domasy efficiently.</p>
+                    </div>
                     <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
                 </div>
                 <div class="modal-body">
@@ -3936,26 +3983,25 @@ class DomasApp {
                     </div>
                     
                     <div class="help-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
-                        <div class="help-card" style="padding:15px; border:1px solid var(--gray-200); border-radius:8px;">
-                            <i class="fas fa-file-upload mb-2" style="color:var(--primary-600)"></i>
+                        <div class="help-card" style="padding:15px; border:1px solid var(--gray-200); border-radius:12px; background: var(--gray-50);">
+                            <i class="fas fa-file-upload mb-2" style="color:var(--primary-600); font-size: 20px;"></i>
                             <h4 style="font-weight:600; margin-bottom:5px;">Uploading</h4>
                             <p style="font-size:13px; color:var(--gray-500);">Go to Documents page and click "Upload Document" to start.</p>
                         </div>
-                        <div class="help-card" style="padding:15px; border:1px solid var(--gray-200); border-radius:8px;">
-                            <i class="fas fa-check-circle mb-2" style="color:var(--success-600);"></i>
+                        <div class="help-card" style="padding:15px; border:1px solid var(--gray-200); border-radius:12px; background: var(--gray-50);">
+                            <i class="fas fa-check-circle mb-2" style="color:var(--success-600); font-size: 20px;"></i>
                             <h4 style="font-weight:600; margin-bottom:5px;">Approvals</h4>
                             <p style="font-size:13px; color:var(--gray-500);">Check your notifications for documents awaiting your review.</p>
                         </div>
                     </div>
 
-                    <div class="mt-4" style="padding:15px; background:var(--gray-50); border-radius:8px;">
-                        <h4 style="font-weight:600; margin-bottom:5px;">Need more help?</h4>
-                        <p style="font-size:14px; color:var(--gray-600);">Contact our support team at <a href="mailto:support@domasy.com" style="color:var(--primary-600);">support@domasy.com</a></p>
+                    <div class="mt-4" style="padding:15px; background:var(--primary-50); border-radius:12px; border: 1px dashed var(--primary-200);">
+                        <h4 style="font-weight:600; color: var(--primary-700); margin-bottom:5px;">Need more help?</h4>
+                        <p style="font-size:14px; color:var(--primary-600);">Our support team is currently available via the internal messaging system. Look for the support contact in your team list.</p>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">Close</button>
-                    <button class="btn btn-primary" onclick="window.open('https://docs.domasy.com', '_blank')">View Full Documentation</button>
+                    <button class="btn btn-primary" style="width: 100%;" onclick="this.closest('.modal-overlay').remove()">Got it!</button>
                 </div>
             </div>
         `;
