@@ -1,22 +1,17 @@
 {
     "version": 2,
-    "builds": [
+    "rewrites": [
         {
-            "src": "api/index.js",
-            "use": "@vercel/node"
-        }
-    ],
-    "routes": [
-        {
-            "src": "/api/(.*)",
-            "dest": "/api/index.js"
+            "source": "/api/(.*)",
+            "destination": "/api/index.js"
         },
         {
-            "src": "/uploads/(.*)",
-            "dest": "/api/index.js"
+            "source": "/uploads/(.*)",
+            "destination": "/api/index.js"
+        },
+        {
+            "source": "/(.*)",
+            "destination": "/$1"
         }
-    ],
-    "env": {
-        "TEST_VAR": "Hello from vercel.json"
-    }
+    ]
 }
