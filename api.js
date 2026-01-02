@@ -99,6 +99,10 @@ class API {
                     errorMessage += `: ${data.error}`;
                 }
 
+                if (data.debugEnvKeys) {
+                    errorMessage += `\n[DEBUG] Available Env Vars: ${data.debugEnvKeys}`;
+                }
+
                 throw new Error(errorMessage);
             }
 
