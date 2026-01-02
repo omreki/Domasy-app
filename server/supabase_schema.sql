@@ -18,8 +18,31 @@ create table public.users (
 -- RLS for Users
 alter table public.users enable row level security;
 create policy "Public profiles are viewable by everyone" on public.users for select using (true);
-create policy "Users can insert their own profile" on public.users for insert with check (auth.uid() = id);
 create policy "Users can update own profile" on public.users for update using (auth.uid() = id);
+
+-- Function to handle new user signup
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  insert into public.users (id, email, name, role, status)
+  values (
+    new.id,
+    new.email,
+    coalesce(new.raw_user_meta_data->>'name', new.email),
+    'Viewer',
+    'Active'
+  );
+  return new;
+end;
+$$;
+
+-- Trigger to call function on signup
+create or replace trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute procedure public.handle_new_user();
 
 -- Categories Table
 create table public.categories (

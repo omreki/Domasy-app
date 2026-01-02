@@ -14,16 +14,15 @@ class UserService {
             name: userData.name,
             email: userData.email.toLowerCase(),
             role: userData.role || 'Viewer',
-            status: userData.status || 'Pending',
+            status: userData.status || 'Active', // Default to Active
             avatar: userData.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}&background=4F46E5&color=fff`,
             department: userData.department || null,
-            created_at: new Date(),
             updated_at: new Date()
         };
 
         const { data, error } = await supabase
             .from(TABLE)
-            .insert(userProfile)
+            .upsert(userProfile, { onConflict: 'id' })
             .select()
             .single();
 
