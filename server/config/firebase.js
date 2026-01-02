@@ -55,14 +55,14 @@ try {
         });
         console.log('✅ Firebase Admin initialized successfully');
     } else {
-        console.error('\n🛑 CRITICAL SETUP ERROR: No Firebase credentials found.');
-        console.error('-------------------------------------------------------');
-        console.error('To fix this, you need a "serviceAccountKey.json" file:');
-        console.error('1. Go to Firebase Console > Project Settings > Service Accounts');
-        console.error('2. Click "Generate new private key"');
-        console.error('3. Save the file as "serviceAccountKey.json" inside the "server" folder');
-        console.error('-------------------------------------------------------\n');
-        process.exit(1); // Exit cleanly before crashing
+        const errorMsg = '🛑 CRITICAL SETUP ERROR: No Firebase credentials found. ' +
+            'Please ensure FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY ' +
+            'are set in your environment variables.';
+        console.error(errorMsg);
+        // On Vercel, we shouldn't kill the process, but we should make it obvious what went wrong
+        if (process.env.VERCEL) {
+            throw new Error(errorMsg);
+        }
     }
 } catch (error) {
     // Check if simple re-initialization error
@@ -70,7 +70,9 @@ try {
         // ignore
     } else {
         console.error('❌ Firebase initialization error:', error.message);
-        process.exit(1);
+        if (process.env.VERCEL) {
+            throw error;
+        }
     }
 }
 

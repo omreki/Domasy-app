@@ -8,13 +8,16 @@ const rateLimit = require('express-rate-limit');
 const path = require('path');
 const fs = require('fs');
 
-// Load env vars with explicit path to ensure it works
+// Load env vars with explicit path only if file exists
 const envPath = path.join(__dirname, '.env');
-const result = dotenv.config({ path: envPath });
-
-if (result.error) {
-    console.error('❌ Failed to load .env file from:', envPath);
-    console.error(result.error);
+if (fs.existsSync(envPath)) {
+    const result = dotenv.config({ path: envPath });
+    if (result.error) {
+        console.warn('⚠️  Could not parse .env file');
+    }
+} else {
+    // In production (Vercel), usually env vars are already in process.env
+    dotenv.config();
 }
 
 // Helper to check for Firebase credentials
@@ -116,9 +119,14 @@ app.use('/api/', limiter);
 
 // Serve static files (uploads) - Keeping this for fallback or local dev if needed, 
 // though we aim for Firebase Storage URLs now.
+// Create uploads directory if it doesn't exist (Only for local dev)
 const uploadsDir = process.env.UPLOAD_PATH || './uploads';
-if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir, { recursive: true });
+try {
+    if (!fs.existsSync(uploadsDir) && !process.env.VERCEL) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+} catch (err) {
+    console.warn('⚠️  Could not create uploads directory (might be on a read-only filesystem):', err.message);
 }
 app.use('/uploads', express.static(path.join(__dirname, uploadsDir)));
 
@@ -178,24 +186,14 @@ app.use((req, res) => {
 });
 
 // Start server
+// Start server only if not running on Vercel
 const PORT = process.env.PORT || 5000;
-const server = app.listen(PORT, () => {
-    console.log(`🚀 Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
-    console.log(`🔥 Connected to Firebase project: ${process.env.FIREBASE_PROJECT_ID || 'Unknown (Check .env)'}`);
-
-    // DEBUG: Log mounted routes
-    /*
-    console.log('--- Mounted Routes ---');
-    app._router.stack.forEach(r => {
-        if (r.route && r.route.path) {
-            console.log(r.route.path);
-        } else if (r.name === 'router') {
-             // For mounted routers, regexp shows the prefix
-             console.log('Router:', r.regexp);
-        }
+if (!process.env.VERCEL) {
+    app.listen(PORT, () => {
+        console.log(`🚀 Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
+        console.log(`🔥 Connected to Firebase project: ${process.env.FIREBASE_PROJECT_ID || 'Unknown'}`);
     });
-    */
-});
+}
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (err) => {

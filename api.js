@@ -75,7 +75,15 @@ class API {
                 }
             });
 
-            const data = await response.json();
+            const responseText = await response.text();
+            let data;
+
+            try {
+                data = JSON.parse(responseText);
+            } catch (e) {
+                console.error('Non-JSON response from server:', responseText);
+                throw new Error(`Server error: ${responseText.substring(0, 50)}...`);
+            }
 
             if (!response.ok) {
                 // Handle 401 Unauthorized (token inspired/invalid)
