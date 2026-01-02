@@ -199,6 +199,33 @@ img {
     font-size: 1.5rem;
 }
 
+.custom-logo {
+    max-height: 32px;
+    width: auto;
+    object-fit: contain;
+    transition: all 0.3s ease;
+}
+
+/* Branding Display Modes */
+.logo-only {
+    justify-content: center;
+    width: 100%;
+}
+
+.logo-only .custom-logo {
+    max-height: 48px;
+    margin-right: 0 !important;
+}
+
+.logo-name-only .custom-logo,
+.logo-name-only i {
+    display: none !important;
+}
+
+.logo-both {
+    justify-content: flex-start;
+}
+
 .sidebar-toggle {
     color: white;
     padding: var(--spacing-sm);

@@ -92,11 +92,30 @@ exports.approveStage = async (req, res) => {
         }
 
         // Logic to approve current stage
-        const currentStageIdx = workflowData.currentStageIndex;
+        const currentStageIdx = workflowData.current_stage_index ?? workflowData.currentStageIndex ?? 0;
         const currentStage = workflowData.stages[currentStageIdx];
 
-        // Authorization check
-        if (currentStage.assignee !== req.user.id) {
+        // Authorization check - Allow assignee, Super Admin, or Approver role
+        // Handle assignee as either string ID or object with id property
+        const assigneeId = typeof currentStage.assignee === 'object'
+            ? (currentStage.assignee.id || currentStage.assignee._id)
+            : currentStage.assignee;
+        const isAssignee = assigneeId && String(assigneeId) === String(req.user.id);
+        const isSuperAdmin = req.user.role === 'Super Admin';
+        const isApproverRole = req.user.role === 'Approver';
+
+        // Check if user is any pending reviewer in this workflow
+        const isPendingReviewer = workflowData.stages.some(stage => {
+            if (stage.status === 'current' || stage.status === 'pending') {
+                const stageAssignee = typeof stage.assignee === 'object'
+                    ? (stage.assignee.id || stage.assignee._id)
+                    : stage.assignee;
+                return stageAssignee && String(stageAssignee) === String(req.user.id);
+            }
+            return false;
+        });
+
+        if (!isAssignee && !isPendingReviewer && !isSuperAdmin && !isApproverRole) {
             return res.status(403).json({
                 success: false,
                 message: 'You are not authorized to approve this stage'
@@ -113,7 +132,7 @@ exports.approveStage = async (req, res) => {
             actionDate: Date.now()
         };
 
-        let overallStatus = workflowData.overallStatus;
+        let overallStatus = workflowData.overall_status || workflowData.overallStatus;
         let nextStageIdx = currentStageIdx;
         let docStatus = 'In Review';
         let currentApprover = null;
@@ -135,9 +154,10 @@ exports.approveStage = async (req, res) => {
         });
 
         // Update Document
-        const document = await DocumentService.findById(workflowData.document);
+        const documentId = workflowData.document_id || workflowData.document;
+        const document = await DocumentService.findById(documentId);
         if (document) {
-            await DocumentService.update(workflowData.document, {
+            await DocumentService.update(documentId, {
                 status: docStatus,
                 currentApprover: currentApprover
             });
@@ -180,10 +200,28 @@ exports.rejectStage = async (req, res) => {
         const workflowData = await ApprovalWorkflowService.findById(req.params.workflowId);
         if (!workflowData) return res.status(404).json({ success: false, message: 'Not found' });
 
-        const currentStageIdx = workflowData.currentStageIndex;
+        const currentStageIdx = workflowData.current_stage_index ?? workflowData.currentStageIndex ?? 0;
         const currentStage = workflowData.stages[currentStageIdx];
 
-        if (currentStage.assignee !== req.user.id) {
+        // Authorization check - Allow assignee, Super Admin, or Approver role
+        const assigneeId = typeof currentStage.assignee === 'object'
+            ? (currentStage.assignee.id || currentStage.assignee._id)
+            : currentStage.assignee;
+        const isAssignee = assigneeId && String(assigneeId) === String(req.user.id);
+        const isSuperAdmin = req.user.role === 'Super Admin';
+        const isApproverRole = req.user.role === 'Approver';
+
+        const isPendingReviewer = workflowData.stages.some(stage => {
+            if (stage.status === 'current' || stage.status === 'pending') {
+                const stageAssignee = typeof stage.assignee === 'object'
+                    ? (stage.assignee.id || stage.assignee._id)
+                    : stage.assignee;
+                return stageAssignee && String(stageAssignee) === String(req.user.id);
+            }
+            return false;
+        });
+
+        if (!isAssignee && !isPendingReviewer && !isSuperAdmin && !isApproverRole) {
             return res.status(403).json({ success: false, message: 'Not authorized' });
         }
 
@@ -201,9 +239,10 @@ exports.rejectStage = async (req, res) => {
             overallStatus: 'Rejected'
         });
 
-        const document = await DocumentService.findById(workflowData.document);
+        const documentId = workflowData.document_id || workflowData.document;
+        const document = await DocumentService.findById(documentId);
         if (document) {
-            await DocumentService.update(workflowData.document, {
+            await DocumentService.update(documentId, {
                 status: 'Rejected',
                 currentApprover: null
             });
@@ -242,8 +281,28 @@ exports.requestChanges = async (req, res) => {
         const workflowData = await ApprovalWorkflowService.findById(req.params.workflowId);
         if (!workflowData) return res.status(404).json({ success: false, message: 'Not found' });
 
-        const currentStageIdx = workflowData.currentStageIndex;
-        if (workflowData.stages[currentStageIdx].assignee !== req.user.id) {
+        const currentStageIdx = workflowData.current_stage_index ?? workflowData.currentStageIndex ?? 0;
+        const currentStage = workflowData.stages[currentStageIdx];
+
+        // Authorization check - Allow assignee, Super Admin, or Approver role
+        const assigneeId = typeof currentStage.assignee === 'object'
+            ? (currentStage.assignee.id || currentStage.assignee._id)
+            : currentStage.assignee;
+        const isAssignee = assigneeId && String(assigneeId) === String(req.user.id);
+        const isSuperAdmin = req.user.role === 'Super Admin';
+        const isApproverRole = req.user.role === 'Approver';
+
+        const isPendingReviewer = workflowData.stages.some(stage => {
+            if (stage.status === 'current' || stage.status === 'pending') {
+                const stageAssignee = typeof stage.assignee === 'object'
+                    ? (stage.assignee.id || stage.assignee._id)
+                    : stage.assignee;
+                return stageAssignee && String(stageAssignee) === String(req.user.id);
+            }
+            return false;
+        });
+
+        if (!isAssignee && !isPendingReviewer && !isSuperAdmin && !isApproverRole) {
             return res.status(403).json({ success: false, message: 'Not authorized' });
         }
 
@@ -261,9 +320,10 @@ exports.requestChanges = async (req, res) => {
             overallStatus: 'Changes Requested'
         });
 
-        const document = await DocumentService.findById(workflowData.document);
+        const documentId = workflowData.document_id || workflowData.document;
+        const document = await DocumentService.findById(documentId);
         if (document) {
-            await DocumentService.update(workflowData.document, { status: 'Changes Requested' });
+            await DocumentService.update(documentId, { status: 'Changes Requested' });
 
             await AuditLogService.create({
                 user: req.user.id,

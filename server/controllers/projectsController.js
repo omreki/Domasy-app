@@ -28,10 +28,10 @@ const populateProjectUsers = async (projects) => {
 
     // Populate
     return await Promise.all(projects.map(async p => {
-        const participants = p.participants.map(part => {
+        const participants = Array.isArray(p.participants) ? p.participants.map(part => {
             const u = usersMap[part.user];
             return u ? { ...part, user: u } : part;
-        });
+        }) : [];
 
         const createdBy = usersMap[p.createdBy] || p.createdBy;
 
@@ -164,6 +164,15 @@ exports.updateProject = async (req, res) => {
         }
 
         const projectData = { ...req.body };
+
+        // Authorization check: Owner OR Super Admin OR Editor
+        if (project.createdBy !== req.user.id && req.user.role !== 'Super Admin' && req.user.role !== 'Editor') {
+            return res.status(403).json({
+                success: false,
+                message: 'Not authorized to update this project'
+            });
+        }
+
         if (projectData.dueDate) projectData.dueDate = new Date(projectData.dueDate);
 
         project = await ProjectService.update(req.params.id, projectData);
@@ -201,6 +210,15 @@ exports.deleteProject = async (req, res) => {
             return res.status(404).json({
                 success: false,
                 message: 'Project not found'
+            });
+        }
+
+        // Authorization check: Owner OR Super Admin OR Editor
+        // (Allowing Editors to delete projects as they are managers)
+        if (project.createdBy !== req.user.id && req.user.role !== 'Super Admin' && req.user.role !== 'Editor') {
+            return res.status(403).json({
+                success: false,
+                message: 'Not authorized to delete this project'
             });
         }
 

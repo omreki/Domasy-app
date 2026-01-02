@@ -5,7 +5,8 @@ const UserService = require('../services/UserService');
 const populateAuditLogs = async (logs) => {
     const userIds = new Set();
     logs.forEach(log => {
-        if (log.user) userIds.add(log.user);
+        const uid = log.user_id || log.user;
+        if (uid) userIds.add(uid);
     });
 
     const usersMap = {};
@@ -13,17 +14,25 @@ const populateAuditLogs = async (logs) => {
         if (uid) {
             const u = await UserService.findById(uid);
             if (u) {
-                usersMap[uid] = { id: u.id, _id: u.id, name: u.name, email: u.email, avatar: u.avatar, role: u.role };
+                usersMap[uid] = {
+                    id: u.id,
+                    _id: u.id,
+                    name: u.name,
+                    email: u.email,
+                    avatar: u.avatar,
+                    role: u.role,
+                    department: u.department
+                };
             }
         }
     }
 
     return logs.map(log => {
-        const user = usersMap[log.user] || { name: 'Unknown', email: 'unknown' };
-        // If documentTitle is stored on log (denormalized), use it.
-        // Document: object just with title is often enough for the table shown in screenshot.
-        // Or if we need ID, we have log.document (ID).
-        const document = log.document ? { _id: log.document, title: log.documentTitle || 'Untitled' } : null;
+        const uid = log.user_id || log.user;
+        const user = usersMap[uid] || { name: 'Unknown', email: 'unknown' };
+
+        const docId = log.document_id || log.document;
+        const document = docId ? { _id: docId, id: docId, title: log.document_title || log.documentTitle || 'Untitled' } : null;
 
         return {
             ...log,

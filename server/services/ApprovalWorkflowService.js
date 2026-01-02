@@ -1,90 +1,105 @@
-const { db, FieldValue } = require('../config/firebase');
+const supabase = require('../config/supabase');
 
-const COLLECTION = 'approval_workflows';
+const TABLE = 'approval_workflows';
 
 class ApprovalWorkflowService {
     // Create workflow
     static async create(workflowData) {
-        const docRef = db.collection(COLLECTION).doc();
-
         const workflow = {
-            id: docRef.id,
-            document: workflowData.document, // ID of the document
+            document_id: workflowData.document, // ID of the document
             stages: workflowData.stages,
-            currentStageIndex: workflowData.currentStageIndex || 0,
-            overallStatus: workflowData.overallStatus || 'In Progress',
-            createdAt: FieldValue.serverTimestamp(),
-            updatedAt: FieldValue.serverTimestamp()
+            current_stage_index: workflowData.currentStageIndex || 0,
+            overall_status: workflowData.overallStatus || 'In Progress',
+            created_at: new Date(),
+            updated_at: new Date()
         };
 
-        await docRef.set(workflow);
-        return workflow;
+        const { data, error } = await supabase
+            .from(TABLE)
+            .insert(workflow)
+            .select()
+            .single();
+
+        if (error) throw new Error(error.message);
+        return data;
     }
 
     // Find workflow by Document ID
     static async findByDocumentId(documentId) {
-        const snapshot = await db.collection(COLLECTION)
-            .where('document', '==', documentId)
-            .limit(1)
-            .get();
+        const { data, error } = await supabase
+            .from(TABLE)
+            .select('*')
+            .eq('document_id', documentId)
+            .single();
 
-        if (snapshot.empty) return null;
-        return snapshot.docs[0].data();
+        if (error) return null; // Handle not found
+        return data;
     }
 
     // Find workflow by ID
     static async findById(id) {
-        const doc = await db.collection(COLLECTION).doc(id).get();
-        if (!doc.exists) return null;
-        return doc.data();
+        const { data, error } = await supabase
+            .from(TABLE)
+            .select('*')
+            .eq('id', id)
+            .single();
+
+        if (error) return null;
+        return data;
     }
 
     // Update workflow
     static async update(id, updateData) {
-        const docRef = db.collection(COLLECTION).doc(id);
-        const updates = { ...updateData, updatedAt: FieldValue.serverTimestamp() };
+        const updates = { ...updateData, updated_at: new Date() };
 
-        await docRef.update(updates);
-        return (await docRef.get()).data();
+        // Map if needed, but keys seem to match generic structure mostly
+        if (updateData.currentStageIndex !== undefined) {
+            updates.current_stage_index = updateData.currentStageIndex;
+            delete updates.currentStageIndex;
+        }
+        if (updateData.overallStatus) {
+            updates.overall_status = updateData.overallStatus;
+            delete updates.overallStatus;
+        }
+
+        const { data, error } = await supabase
+            .from(TABLE)
+            .update(updates)
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (error) throw new Error(error.message);
+        return data;
     }
 
     // Delete by Document ID
     static async deleteByDocumentId(documentId) {
-        const snapshot = await db.collection(COLLECTION)
-            .where('document', '==', documentId)
-            .get();
+        const { error } = await supabase
+            .from(TABLE)
+            .delete()
+            .eq('document_id', documentId);
 
-        const batch = db.batch();
-        snapshot.docs.forEach(doc => {
-            batch.delete(doc.ref);
-        });
-
-        await batch.commit();
+        if (error) throw new Error(error.message);
     }
 
     // Get pending workflows for user
     static async getPendingForUser(userId) {
-        // This is complex in NoSQL. We'll fetch active workflows and filter in memory or 
-        // rely on a specific 'currentAssignee' field if we optimize for read.
-        // For matching exact MongoDB logic:
-
         // 1. Get all In Progress workflows
-        const snapshot = await db.collection(COLLECTION)
-            .where('overallStatus', '==', 'In Progress')
-            .get();
+        const { data: workflows, error } = await supabase
+            .from(TABLE)
+            .select('*')
+            .eq('overall_status', 'In Progress');
 
-        const workflows = snapshot.docs.map(doc => doc.data());
+        if (error) throw new Error(error.message);
 
         // 2. Filter where current stage assignee matches userId
         return workflows.filter(wf => {
-            const currentStage = wf.stages[wf.currentStageIndex];
+            // wf.stages is JSONB (array)
+            const currentStage = wf.stages[wf.current_stage_index || 0];
             return currentStage && currentStage.assignee === userId && currentStage.status === 'current';
         });
     }
-
-    // Methods like approveCurrentStage, rejectCurrentStage, etc. 
-    // will be handled in controller logic using the update method, 
-    // or we can encapsulate them here. I'll stick to basic CRUD here to keep it flexible.
 }
 
 module.exports = ApprovalWorkflowService;

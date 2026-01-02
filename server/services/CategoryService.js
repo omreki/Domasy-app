@@ -1,42 +1,58 @@
-const { db, FieldValue } = require('../config/firebase');
+const supabase = require('../config/supabase');
 
-const COLLECTION = 'project_categories';
+const TABLE = 'categories';
 
-/**
- * Service to manage project categories
- */
 class CategoryService {
 
     // Create a new category
     static async create(name) {
         if (!name) throw new Error('Category name is required');
 
-        // check for duplicate
-        const snapshot = await db.collection(COLLECTION).where('name', '==', name).get();
-        if (!snapshot.empty) {
+        // Check for duplicate
+        const { data: existing } = await supabase
+            .from(TABLE)
+            .select('*')
+            .eq('name', name)
+            .single();
+
+        if (existing) {
             throw new Error('Category already exists');
         }
 
-        const docRef = db.collection(COLLECTION).doc();
         const category = {
-            id: docRef.id,
             name: name,
-            createdAt: FieldValue.serverTimestamp()
+            created_at: new Date()
         };
 
-        await docRef.set(category);
-        return category;
+        const { data, error } = await supabase
+            .from(TABLE)
+            .insert(category)
+            .select()
+            .single();
+
+        if (error) throw new Error(error.message);
+        return data;
     }
 
     // Get all categories
     static async getAll() {
-        const snapshot = await db.collection(COLLECTION).orderBy('name').get();
-        return snapshot.docs.map(doc => doc.data());
+        const { data, error } = await supabase
+            .from(TABLE)
+            .select('*')
+            .order('name');
+
+        if (error) throw new Error(error.message);
+        return data;
     }
 
     // Delete a category
     static async delete(id) {
-        await db.collection(COLLECTION).doc(id).delete();
+        const { error } = await supabase
+            .from(TABLE)
+            .delete()
+            .eq('id', id);
+
+        if (error) throw new Error(error.message);
         return true;
     }
 }

@@ -182,6 +182,13 @@ class API {
         }
     }
 
+    static async updateDocument(id, data) {
+        return this.request(`/documents/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        });
+    }
+
     static async deleteDocument(id) {
         return this.request(`/documents/${id}`, { method: 'DELETE' });
     }
@@ -315,6 +322,61 @@ class API {
             method: 'POST',
             body: JSON.stringify({ note })
         });
+    }
+    // Profile
+    static async updateProfile(data) {
+        return this.request('/users/profile', {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        });
+    }
+
+    static async updateAvatar(formData) {
+        const token = this.token;
+        try {
+            const response = await fetch(`${API_URL}/users/avatar`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                },
+                body: formData
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.message);
+            return data;
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    // Settings
+    static async getSettings(id) {
+        return this.request(`/settings/${id}`);
+    }
+
+    static async updateSettings(id, data) {
+        return this.request(`/settings/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        });
+    }
+
+    static async uploadBrandingAsset(type, formData) {
+        const token = this.token;
+        try {
+            const response = await fetch(`${API_URL}/settings/upload/${type}`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                },
+                body: formData
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.message);
+            return data;
+        } catch (error) {
+            throw error;
+        }
     }
 }
 

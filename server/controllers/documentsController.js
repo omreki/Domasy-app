@@ -5,70 +5,35 @@ const UserService = require('../services/UserService');
 const ProjectService = require('../services/ProjectService');
 const path = require('path');
 const fs = require('fs');
+const supabase = require('../config/supabase');
+const { generateThumbnail } = require('../utils/thumbnailGenerator');
 
-let puppeteer;
-try {
-    puppeteer = require('puppeteer');
-} catch (e) {
-    console.warn('Puppeteer not installed, PDF thumbnails will not be generated.');
-}
-
-const generateThumbnail = async (file) => {
-    if (!puppeteer || !file || file.mimetype !== 'application/pdf') return null;
-
-    try {
-        const browser = await puppeteer.launch({
-            headless: 'new',
-            args: ['--no-sandbox', '--disable-setuid-sandbox']
-        });
-        const page = await browser.newPage();
-
-        // Construct file URL or absolute path
-        const filePath = path.resolve(file.path);
-        await page.goto(`file://${filePath}`);
-
-        const thumbsDir = path.join(path.dirname(file.path), 'thumbnails');
-        if (!fs.existsSync(thumbsDir)) {
-            fs.mkdirSync(thumbsDir, { recursive: true });
-        }
-
-        const thumbName = `${file.filename}-thumb.png`;
-        const thumbPath = path.join(thumbsDir, thumbName);
-
-        await page.setViewport({ width: 800, height: 1100 });
-        await page.screenshot({ path: thumbPath, type: 'png' });
-
-        await browser.close();
-
-        return `/uploads/thumbnails/${thumbName}`;
-    } catch (error) {
-        console.error('Thumbnail generation failed:', error);
-        return null; // Fail gracefully
-    }
-};
 
 // Helper to manual populate user details
 const populateUsers = async (documents) => {
     // Collect unique user IDs
     const userIds = new Set();
     documents.forEach(doc => {
-        if (doc.uploadedBy) userIds.add(doc.uploadedBy);
-        if (doc.currentApprover) userIds.add(doc.currentApprover);
+        const uid = doc.uploaded_by || doc.uploadedBy;
+        const aid = doc.current_approver || doc.currentApprover;
+        if (uid) userIds.add(uid);
+        if (aid) userIds.add(aid);
     });
 
     const usersMap = {};
     for (const uid of userIds) {
-        if (uid) {
+        if (uid && typeof uid === 'string') {
             const user = await UserService.findById(uid);
             if (user) {
                 // Return safe user object
                 usersMap[uid] = {
-                    id: user.id, // _id for Mongoose compatibility if frontend expects it
-                    _id: user.id,
+                    id: user.id,
+                    _id: user.id, // compatibility
                     name: user.name,
                     email: user.email,
                     avatar: user.avatar,
-                    role: user.role
+                    role: user.role,
+                    department: user.department
                 };
             }
         }
@@ -77,12 +42,13 @@ const populateUsers = async (documents) => {
     // Collect project IDs
     const projectIds = new Set();
     documents.forEach(doc => {
-        if (doc.project) projectIds.add(doc.project);
+        const pid = doc.project_id || doc.project;
+        if (pid) projectIds.add(pid);
     });
 
     const projectsMap = {};
     for (const pid of projectIds) {
-        if (pid) {
+        if (pid && typeof pid === 'string') {
             const project = await ProjectService.findById(pid);
             if (project) {
                 projectsMap[pid] = { id: project.id, _id: project.id, name: project.name };
@@ -92,10 +58,17 @@ const populateUsers = async (documents) => {
 
     // Attach objects
     return documents.map(doc => {
-        const d = { ...doc, _id: doc.id }; // Add _id alias
-        if (doc.uploadedBy && usersMap[doc.uploadedBy]) d.uploadedBy = usersMap[doc.uploadedBy];
-        if (doc.currentApprover && usersMap[doc.currentApprover]) d.currentApprover = usersMap[doc.currentApprover];
-        if (doc.project && projectsMap[doc.project]) d.project = projectsMap[doc.project];
+        const d = { ...doc, _id: doc.id };
+
+        // Normalize fields
+        const uid = doc.uploaded_by || doc.uploadedBy;
+        const aid = doc.current_approver || doc.currentApprover;
+        const pid = doc.project_id || doc.project;
+
+        if (uid && usersMap[uid]) d.uploadedBy = usersMap[uid];
+        if (aid && usersMap[aid]) d.currentApprover = usersMap[aid];
+        if (pid && projectsMap[pid]) d.project = projectsMap[pid];
+
         return d;
     });
 };
@@ -151,17 +124,21 @@ exports.getDocuments = async (req, res) => {
         });
 
         // Fetch user details for these IDs
+        // Fetch user details for these IDs concurrently
         const teamUsersMap = {};
-        for (const uid of workflowUserIds) {
-            const user = await UserService.findById(uid);
-            if (user) {
-                teamUsersMap[uid] = {
-                    id: user.id,
-                    name: user.name,
-                    email: user.email,
-                    avatar: user.avatar,
-                    role: user.role
-                };
+        const userIdsArray = Array.from(workflowUserIds);
+
+        // Use Supabase 'in' query for efficiency
+        if (userIdsArray.length > 0) {
+            const { data: users, error } = await supabase
+                .from('users')
+                .select('id, name, email, avatar, role')
+                .in('id', userIdsArray);
+
+            if (!error && users) {
+                users.forEach(user => {
+                    teamUsersMap[user.id] = user;
+                });
             }
         }
 
@@ -378,7 +355,7 @@ exports.updateDocument = async (req, res) => {
         }
 
         // Check ownership
-        if (document.uploadedBy !== req.user.id && req.user.role !== 'Super Admin') {
+        if (document.uploadedBy !== req.user.id && req.user.role !== 'Super Admin' && req.user.role !== 'Editor') {
             return res.status(403).json({
                 success: false,
                 message: 'Not authorized'
@@ -489,7 +466,7 @@ exports.deleteDocument = async (req, res) => {
             });
         }
 
-        if (document.uploadedBy !== req.user.id && req.user.role !== 'Super Admin') {
+        if (document.uploadedBy !== req.user.id && req.user.role !== 'Super Admin' && req.user.role !== 'Editor') {
             return res.status(403).json({
                 success: false,
                 message: 'Not authorized'
@@ -644,32 +621,23 @@ exports.uploadRevision = async (req, res) => {
 
         const { note } = req.body;
 
-        // Prepare new file data
-        const fileUrl = `/uploads/${req.file.filename}`;
-
-        const fileData = {
-            filename: req.file.filename,
-            originalName: req.file.originalname,
-            mimetype: req.file.mimetype,
-            size: req.file.size,
-            path: req.file.path,
-            url: fileUrl
-        };
-
-        // Update Document
-        const newVersion = (document.version || 1) + 1;
-
         // Generate thumbnail for PDF
         let thumbnail = null;
         if (req.file.mimetype === 'application/pdf') {
             thumbnail = await generateThumbnail(req.file);
         }
 
+        // Upload to Supabase Storage
+        const fileData = await DocumentService.uploadFileToStorage(req.file);
+
+        // Update Document
+        const newVersion = (document.version || 1) + 1;
+
         const updateData = {
-            file: fileData,
+            ...fileData, // Spread Supabase fields (file_url, file_path, etc.)
             status: 'In Review',
             version: newVersion,
-            thumbnail: thumbnail || document.thumbnail // Keep old thumbnail if new one is null (e.g. non-pdf revision) or update if new one generated
+            thumbnail: thumbnail || document.thumbnail
         };
 
         const updatedDoc = await DocumentService.update(req.params.id, updateData);
@@ -690,35 +658,50 @@ exports.uploadRevision = async (req, res) => {
             };
 
             // Reset statuses
-            const updatedStages = workflowData.stages.map(stage => {
-                if (stage.status === 'rejected' || stage.status === 'changes_requested') {
-                    // Reset to pending
-                    return { ...stage, status: 'pending', actionDate: null, note: null };
+            // Reset statuses: Any stage that was rejected, changes requested, or current becomes pending
+            // except the initial upload stage which stays completed.
+            const updatedStages = workflowData.stages.map((stage, idx) => {
+                // If it's a review stage (not the first submitter stage)
+                if (idx > 0 && (stage.status === 'rejected' || stage.status === 'Rejected' ||
+                    stage.status === 'changes_requested' || stage.status === 'Changes Requested' ||
+                    stage.status === 'current')) {
+                    return {
+                        ...stage,
+                        status: 'pending',
+                        action: null,
+                        actionDate: null,
+                        note: null
+                    };
                 }
                 return stage;
             });
 
-            // Append history
+            // Append the revision upload as a completed history stage
             updatedStages.push(newHistoryStage);
 
-            // Set current
-            let foundCurrent = false;
+            // Set the first available review stage (index 1) to "current"
             let currentStageIndex = 0;
-            const finalStages = updatedStages.map((stage, idx) => {
-                // Skip completed/history ones
-                if (stage.status === 'pending' && !foundCurrent && stage.assignee !== req.user.id) {
-                    foundCurrent = true;
-                    currentStageIndex = idx;
-                    return { ...stage, status: 'current' };
+            if (updatedStages.length > 1) {
+                // Find first non-completed stage starting from index 1
+                for (let i = 1; i < updatedStages.length; i++) {
+                    if (updatedStages[i].status === 'pending') {
+                        updatedStages[i].status = 'current';
+                        currentStageIndex = i;
+                        break;
+                    }
                 }
-                return stage;
+            }
+
+            // Sync document's current approver
+            const currentApprover = updatedStages[currentStageIndex]?.assignee;
+            const assigneeId = typeof currentApprover === 'object' ? (currentApprover.id || currentApprover._id) : currentApprover;
+
+            await DocumentService.update(req.params.id, {
+                currentApprover: assigneeId
             });
 
-            // If we didn't find a pending reviewer (e.g. all were completed except the rejected one which we reset), 
-            // the reset logic should have handled it.
-
             await ApprovalWorkflowService.update(workflowData.id, {
-                stages: finalStages,
+                stages: updatedStages,
                 overallStatus: 'In Progress',
                 currentStageIndex: currentStageIndex
             });

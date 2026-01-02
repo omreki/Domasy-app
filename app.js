@@ -7,11 +7,17 @@ class DomasApp {
         this.currentPage = 'dashboard';
         this.isAuthenticated = !!API.token;
         this.currentUser = JSON.parse(localStorage.getItem('user'));
+        this.branding = {
+            logo: null,
+            name: 'Domasy',
+            displayMode: 'both' // 'logo-only', 'name-only', 'both'
+        };
         this.init();
     }
 
     async init() {
         const appContainer = document.getElementById('app');
+        this.loadBranding();
 
         if (!this.isAuthenticated) {
             // Hide main app when not authenticated
@@ -32,6 +38,75 @@ class DomasApp {
             this.updateUserProfileUI();
             this.updateNavigationForRole(); // Update nav based on role
             this.loadPage('dashboard');
+        }
+    }
+
+    async loadBranding() {
+        try {
+            const response = await API.getSettings('branding');
+            if (response.success && response.data) {
+                this.branding = {
+                    ...this.branding,
+                    ...response.data
+                };
+                this.updateBrandingUI();
+            }
+        } catch (error) {
+            console.error('Failed to load branding:', error);
+        }
+    }
+
+    updateBrandingUI() {
+        const logoContainers = document.querySelectorAll('.logo');
+        const logoTexts = document.querySelectorAll('.logo-text');
+        const systemName = this.branding.name || 'Domasy';
+        const displayMode = this.branding.displayMode || 'both';
+
+        // Update document title
+        document.title = `${systemName} - Document Management System`;
+
+        logoContainers.forEach(container => {
+            // Logo Image / Icon
+            const showLogo = displayMode === 'both' || displayMode === 'logo-only';
+            const icon = container.querySelector('i');
+            let img = container.querySelector('img.custom-logo');
+
+            // Add mode class
+            container.classList.remove('logo-both', 'logo-only', 'logo-name-only');
+            container.classList.add(`logo-${displayMode}`);
+
+            if (showLogo) {
+                if (this.branding.logo) {
+                    if (icon) icon.style.display = 'none';
+                    if (!img) {
+                        img = document.createElement('img');
+                        img.className = 'custom-logo';
+                        img.style.height = '32px';
+                        img.style.marginRight = '12px';
+                        container.prepend(img);
+                    }
+                    img.src = this.branding.logo;
+                    img.style.display = 'block';
+                } else {
+                    if (img) img.style.display = 'none';
+                    if (icon) icon.style.display = 'block';
+                }
+            } else {
+                if (img) img.style.display = 'none';
+                if (icon) icon.style.display = 'none';
+            }
+        });
+
+        logoTexts.forEach(text => {
+            const showName = displayMode === 'both' || displayMode === 'name-only';
+            text.textContent = systemName;
+            text.style.display = showName ? 'block' : 'none';
+        });
+
+        // Update login page if visible
+        const loginSubtitle = document.querySelector('#loginOverlay p');
+        if (loginSubtitle) {
+            loginSubtitle.textContent = `Sign in to access your secure ${systemName} workspace`;
         }
     }
 
@@ -63,7 +138,7 @@ class DomasApp {
                         <i class="fas fa-shield-alt"></i>
                     </div>
                     <h1 style="font-size: 24px; font-weight: 700; color: var(--text-primary);">Welcome Back</h1>
-                    <p style="color: var(--gray-600);">Sign in to access your secure workspace</p>
+                    <p style="color: var(--gray-600);">Sign in to access your secure ${this.branding.name || 'Domasy'} workspace</p>
                 </div>
                 
                 <form id="authForm" onsubmit="app.handleAuth(event)">
@@ -145,7 +220,7 @@ class DomasApp {
             switchText.textContent = 'Already have an account?';
             switchLink.textContent = 'Sign in';
             title.textContent = 'Create Account';
-            subtitle.textContent = 'Join Domasy today';
+            subtitle.textContent = `Join ${this.branding.name || 'Domasy'} today`;
         } else {
             // Switch to Login
             modeInput.value = 'login';
@@ -155,7 +230,7 @@ class DomasApp {
             switchText.textContent = "Don't have an account?";
             switchLink.textContent = 'Sign up';
             title.textContent = 'Welcome Back';
-            subtitle.textContent = 'Sign in to access your secure workspace';
+            subtitle.textContent = `Sign in to access your secure ${this.branding.name || 'Domasy'} workspace`;
         }
     }
 
@@ -586,58 +661,68 @@ class DomasApp {
     }
 
     renderDocumentListItem(doc) {
-        const uploader = doc.uploadedBy; // Backend ensures this is populated
+        const uploader = doc.uploadedBy;
         const statusColors = {
             'Approved': 'success',
             'In Review': 'info',
             'Changes Requested': 'warning',
             'Rejected': 'error',
             'Uploaded': 'gray',
-            'Generated': 'info'
+            'Generated': 'info',
+            'ChangesRequested': 'warning'
         };
 
+        // Normalize fields
+        const createdAt = doc.created_at || doc.createdAt;
+        const rawFileSize = doc.file_size || doc.file?.size || 0;
+
         // Format Date
-        const dateStr = doc.createdAt ? new Date(doc.createdAt).toLocaleDateString() : 'Unknown';
-        const fileSize = doc.file?.size ? (doc.file.size / 1024 / 1024).toFixed(2) + ' MB' : '0 MB';
+        const dateStr = createdAt ? new Date(createdAt).toLocaleDateString() : 'Unknown';
+        const fileSize = (rawFileSize / 1024 / 1024).toFixed(2) + ' MB';
 
         return `
             <div class="document-list-item" onclick="app.viewDocument('${doc._id || doc.id}')">
                 <div class="document-icon">
-                    <i class="fas fa-file-pdf"></i>
+                    <i class="fas fa-file-alt"></i>
                 </div>
                 <div class="document-info">
                     <div class="document-title">${doc.title}</div>
                     <div class="document-meta">
-                        ${uploader ? uploader.name : 'System'} • ${dateStr} • ${fileSize}
+                        ${uploader ? (uploader.name || 'User') : 'System'} • ${dateStr} • ${fileSize}
                     </div>
                 </div>
-                <span class="badge badge-${statusColors[doc.status] || 'gray'}">${doc.status}</span>
+                <span class="badge badge-${statusColors[doc.status.replace(' ', '')] || 'gray'}">${doc.status}</span>
             </div>
         `;
     }
 
     renderActivityItem(log) {
-        const user = log.user; // Backend populated
+        const user = log.user;
         const actionColors = {
             'success': 'success',
             'warning': 'warning',
             'error': 'error',
-            'info': 'info'
+            'info': 'info',
+            'primary': 'primary'
         };
-        const dateStr = log.createdAt ? new Date(log.createdAt).toLocaleString() : 'Just now';
+
+        const createdAt = log.created_at || log.createdAt;
+        const dateStr = createdAt ? new Date(createdAt).toLocaleString() : 'Just now';
+        const actionType = log.action_type || log.actionType || 'info';
+        const docTitle = log.document_title || log.documentTitle || (log.document?.title !== 'Untitled' ? log.document?.title : '');
 
         return `
             <div class="activity-item">
                 <div class="activity-avatar">
-                    ${user && user.avatar ? `<img src="${user.avatar}" alt="${user.name}">` : '<div style="width:32px;height:32px;background:#eee;border-radius:50%"></div>'}
+                    ${user && user.avatar ? `<img src="${user.avatar}" alt="${user.name}" style="object-fit: cover;">` : '<div style="width:32px;height:32px;background:var(--gray-100);border-radius:50%;display:flex;align-items:center;justify-content:center;"><i class="fas fa-user" style="color:var(--gray-400);font-size:12px"></i></div>'}
                 </div>
                 <div class="activity-content">
                     <div class="activity-header">
-                        <strong>${user ? user.name : 'System'}</strong>
-                        <span class="badge badge-${actionColors[log.actionType] || 'info'}">${log.action}</span>
+                        <strong>${user && user.name !== 'Unknown' ? user.name : 'System'}</strong>
+                        <span class="badge badge-${actionColors[actionType] || 'info'}">${log.action}</span>
                     </div>
-                    ${log.documentTitle ? `<div class="activity-document">${log.documentTitle}</div>` : ''}
-                    ${log.details ? `<div class="activity-details">"${log.details}"</div>` : ''}
+                    ${docTitle ? `<div class="activity-document" style="font-weight:500; font-size:12px; margin:2px 0;">${docTitle}</div>` : ''}
+                    ${log.details ? `<div class="activity-details" style="color:var(--gray-500); font-style:italic;">"${log.details}"</div>` : ''}
                     <div class="activity-time">${dateStr}</div>
                 </div>
             </div>
@@ -1630,33 +1715,38 @@ class DomasApp {
             'User Updated': 'info',
             'User Deleted': 'error'
         };
-        const dateStr = log.createdAt ? new Date(log.createdAt).toLocaleString() : 'Unknown';
+
+        const createdAt = log.created_at || log.createdAt;
+        const dateStr = createdAt ? new Date(createdAt).toLocaleString() : 'Unknown';
+        const ipAddress = log.ip_address || log.ipAddress || '-';
+        const details = log.details || '';
+        const docTitle = log.document_title || log.documentTitle || (log.document?.title !== 'Untitled' ? log.document?.title : '');
 
         return `
             <tr>
                 <td>
                     <div style="font-weight: 600; font-size: var(--font-size-sm);">${dateStr.split(',')[0]}</div>
-                    <div style="font-size: var(--font-size-xs); color: var(--gray-500);">${dateStr.split(',')[1]}</div>
+                    <div style="font-size: var(--font-size-xs); color: var(--gray-500);">${dateStr.split(',')[1] || ''}</div>
                 </td>
                 <td>
-                    ${user ? `
+                    ${user && user.name !== 'Unknown' ? `
                         <div style="display: flex; align-items: center; gap: var(--spacing-sm);">
-                            <img src="${user.avatar || 'https://via.placeholder.com/32'}" alt="${user.name}" style="width: 24px; height: 24px; border-radius: var(--radius-full);">
+                            <img src="${user.avatar || 'https://via.placeholder.com/32'}" alt="${user.name}" style="width: 24px; height: 24px; border-radius: var(--radius-full); object-fit: cover;">
                             <span style="font-size: var(--font-size-sm); font-weight: 500;">${user.name}</span>
                         </div>
-                    ` : '<span style="color:var(--gray-500);">System</span>'}
+                    ` : '<span style="color:var(--gray-500); font-size: var(--font-size-sm);">System / Unknown</span>'}
                 </td>
                 <td>
                     <span class="badge badge-${(actionColors[log.action] || 'gray')}">${log.action}</span>
                 </td>
                 <td>
                     <div style="font-weight: 500; font-size: var(--font-size-sm); margin-bottom: 2px;">
-                        ${log.documentTitle || log.details || '-'}
+                        ${docTitle || details || '-'}
                     </div>
-                     ${log.documentTitle && log.details ? `<div style="font-size: 11px; color: var(--gray-500);">${log.details}</div>` : ''}
+                     ${docTitle && details ? `<div style="font-size: 11px; color: var(--gray-500);">${details}</div>` : ''}
                 </td>
                 <td style="color: var(--gray-500); font-family: monospace; font-size: 11px;">
-                    ${log.ipAddress || '-'}
+                    ${ipAddress}
                 </td>
             </tr>
         `;
@@ -1719,6 +1809,11 @@ class DomasApp {
                             <button class="settings-nav-item" onclick="app.switchSettingsTab('notifications')">
                                 <i class="fas fa-bell"></i> Notifications
                             </button>
+                            ${user.role === 'Super Admin' ? `
+                            <button class="settings-nav-item" onclick="app.switchSettingsTab('branding')">
+                                <i class="fas fa-brush"></i> Branding
+                            </button>
+                            ` : ''}
                             <button class="settings-nav-item" onclick="app.switchSettingsTab('categories')">
                                 <i class="fas fa-tags"></i> Project Categories
                             </button>
@@ -1736,10 +1831,15 @@ class DomasApp {
                             <div class="card-body">
                                 <form onsubmit="app.saveProfile(event)">
                                     <div class="form-group" style="display: flex; align-items: center; gap: var(--spacing-lg);">
-                                        <img src="${avatarUrl}" alt="Profile" style="width: 80px; height: 80px; border-radius: 50%;">
+                                        <div style="position: relative;">
+                                            <img src="${avatarUrl}" id="profileAvatarPreview" alt="Profile" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid var(--gray-200);">
+                                            <input type="file" id="avatarUploadInput" style="display: none;" accept="image/*" onchange="app.handleAvatarUpload(event)">
+                                        </div>
                                         <div>
-                                            <button type="button" class="btn btn-outline btn-sm" onclick="alert('Image upload not implemented in demo')">Change Photo</button>
-                                            <button type="button" class="btn btn-text btn-sm" style="color: var(--error-600);" onclick="alert('Delete photo not implemented')">Remove</button>
+                                            <button type="button" class="btn btn-primary btn-sm" onclick="document.getElementById('avatarUploadInput').click()">
+                                                <i class="fas fa-camera"></i> Change Photo
+                                            </button>
+                                            <p style="font-size: 11px; color: var(--gray-500); margin-top: 5px;">JPG, PNG. Max 2MB.</p>
                                         </div>
                                     </div>
 
@@ -1811,6 +1911,49 @@ class DomasApp {
                             </div>
                         </div>
 
+                        <!-- Branding Settings (Admin Only) -->
+                        <div id="settings-branding" class="card" style="display: none;">
+                            <div class="card-header">
+                                <h2 class="card-title">Application Branding</h2>
+                                <p class="card-subtitle">Customize the appearance of the application.</p>
+                            </div>
+                            <div class="card-body">
+                                <form onsubmit="app.saveBranding(event)">
+                                    <div class="form-group">
+                                        <label class="form-label">System Name</label>
+                                        <input type="text" class="form-input" id="brandingName" value="${this.branding.name || 'Domasy'}">
+                                    </div>
+
+                                    <div class="form-group" style="margin-top: var(--spacing-md);">
+                                        <label class="form-label">Display Mode</label>
+                                        <select class="form-input" id="brandingDisplayMode">
+                                            <option value="both" ${this.branding.displayMode === 'both' ? 'selected' : ''}>Logo and Name</option>
+                                            <option value="logo-only" ${this.branding.displayMode === 'logo-only' ? 'selected' : ''}>Logo Only</option>
+                                            <option value="name-only" ${this.branding.displayMode === 'name-only' ? 'selected' : ''}>Name Only</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label class="form-label">System Logo</label>
+                                        <div style="display: flex; align-items: start; gap: var(--spacing-lg); margin-top: 10px;">
+                                            <div style="width: 60px; height: 60px; background: var(--gray-100); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; border: 1px dashed var(--gray-300);">
+                                                ${this.branding.logo ? `<img src="${this.branding.logo}" style="max-width: 100%; max-height: 100%;">` : `<i class="fas fa-image" style="color: var(--gray-400);"></i>`}
+                                            </div>
+                                            <div>
+                                                <input type="file" id="logoUploadInput" style="display: none;" accept="image/*" onchange="app.handleLogoUpload(event)">
+                                                <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('logoUploadInput').click()">Upload Logo</button>
+                                                <p style="font-size: 11px; color: var(--gray-500); margin-top: 5px;">Recommended size: 60x60px. PNG or SVG.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div style="margin-top: var(--spacing-lg); text-align: right;">
+                                        <button type="submit" class="btn btn-primary">Update Branding</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+
                         <!-- Categories Settings -->
                         <div id="settings-categories" class="card" style="display: none;">
                             <div class="card-header">
@@ -1839,7 +1982,7 @@ class DomasApp {
         event.target.closest('.settings-nav-item').classList.add('active');
 
         // Update Content
-        ['profile', 'security', 'notifications', 'categories'].forEach(tab => {
+        ['profile', 'security', 'notifications', 'categories', 'branding'].forEach(tab => {
             const el = document.getElementById(`settings-${tab}`);
             if (el) el.style.display = tab === tabName ? 'block' : 'none';
         });
@@ -1854,30 +1997,103 @@ class DomasApp {
         const name = document.getElementById('settingsName').value;
         const department = document.getElementById('settingsDept').value;
 
-        const btn = e.target.querySelector('button[type="submit"]');
-        const originalText = btn.innerHTML;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
-        btn.disabled = true;
+        this.showLoader();
 
         try {
-            // Note: In a real app, we'd have a specific /me endpoint or allow self-updates
-            // For now, we reuse updateUser if compatible, or simluated update
-            await API.updateProfile({ name, department });
-
-            // Update local state
-            this.currentUser.name = name;
-            this.currentUser.department = department;
-            localStorage.setItem('user', JSON.stringify(this.currentUser));
-
-            // Update UI
-            this.updateUserProfileUI();
-            this.showToast('success', 'Profile Updated', 'Your profile details have been saved.');
+            const response = await API.updateProfile({ name, department });
+            if (response.success) {
+                this.currentUser = { ...this.currentUser, name, department };
+                localStorage.setItem('user', JSON.stringify(this.currentUser));
+                this.updateUserProfileUI();
+                this.showToast('success', 'Profile Updated', 'Your profile details have been saved.');
+            }
         } catch (error) {
-            console.error(error);
+            console.error('Update profile failed:', error);
             this.showToast('error', 'Update Failed', error.message || 'Could not update profile');
         } finally {
-            btn.innerHTML = originalText;
-            btn.disabled = false;
+            this.hideLoader();
+        }
+    }
+
+    async handleAvatarUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('avatar', file);
+
+        this.showLoader();
+
+        try {
+            const response = await API.updateAvatar(formData);
+            if (response.success) {
+                const user = response.data.user;
+                this.currentUser = { ...this.currentUser, avatar: user.avatar };
+                localStorage.setItem('user', JSON.stringify(this.currentUser));
+                this.updateUserProfileUI();
+
+                // Update preview in settings if visible
+                const preview = document.getElementById('profileAvatarPreview');
+                if (preview) preview.src = user.avatar;
+
+                this.showToast('success', 'Photo Updated', 'Your profile photo has been updated.');
+            }
+        } catch (error) {
+            console.error('Avatar upload failed:', error);
+            this.showToast('error', 'Upload Failed', error.message || 'Could not upload photo');
+        } finally {
+            this.hideLoader();
+        }
+    }
+
+    async saveBranding(e) {
+        e.preventDefault();
+        const name = document.getElementById('brandingName').value;
+        const displayMode = document.getElementById('brandingDisplayMode').value;
+
+        this.showLoader();
+
+        try {
+            const response = await API.updateSettings('branding', { name, displayMode });
+            if (response.success) {
+                this.branding.name = name;
+                this.branding.displayMode = displayMode;
+                this.updateBrandingUI();
+                this.showToast('success', 'Branding Updated', 'System branding settings have been saved.');
+            }
+        } catch (error) {
+            console.error('Update branding failed:', error);
+            this.showToast('error', 'Update Failed', error.message || 'Could not update branding');
+        } finally {
+            this.hideLoader();
+        }
+    }
+
+    async handleLogoUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        this.showLoader();
+
+        try {
+            const response = await API.uploadBrandingAsset('logo', formData);
+            if (response.success) {
+                this.branding = {
+                    ...this.branding,
+                    ...response.data.settings
+                };
+                this.updateBrandingUI();
+                this.navigateTo('settings'); // Refresh settings view
+                this.showToast('success', 'Logo Uploaded', 'System logo has been updated.');
+            }
+        } catch (error) {
+            console.error('Logo upload failed:', error);
+            this.showToast('error', 'Upload Failed', error.message || 'Could not upload logo');
+        } finally {
+            this.hideLoader();
         }
     }
 
@@ -2217,6 +2433,76 @@ class DomasApp {
         }
     }
 
+    async showUploadRevisionModal(docId) {
+        const modal = `
+            <div class="modal-overlay" id="uploadRevisionModal" onclick="app.closeModal(event)">
+                <div class="modal" onclick="event.stopPropagation()" style="max-width: 600px;">
+                    <div class="modal-header">
+                        <div>
+                            <h2 class="modal-title">Upload Revision</h2>
+                            <p class="modal-subtitle">Upload a new version of this document.</p>
+                        </div>
+                        <button class="modal-close" onclick="app.closeModal()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label class="form-label">New File</label>
+                            <input type="file" class="form-input" id="revisionFileInput" accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg">
+                            <p class="form-help">Max size: 10MB. Allowed: PDF, Word, Excel, Images.</p>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Revision Note</label>
+                            <textarea class="form-input" id="revisionNote" rows="3" placeholder="What changed in this version?"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-outline" onclick="app.closeModal()">Cancel</button>
+                        <button class="btn btn-primary" onclick="app.submitUploadRevision('${docId}')">
+                            <i class="fas fa-upload"></i> Upload Revision
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.getElementById('modalsContainer').innerHTML = modal;
+    }
+
+    async submitUploadRevision(docId) {
+        const fileInput = document.getElementById('revisionFileInput');
+        const note = document.getElementById('revisionNote').value;
+        const file = fileInput.files[0];
+
+        if (!file) {
+            this.showToast('error', 'Missing File', 'Please select a file to upload.');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('note', note);
+
+        // Show loading state
+        const btn = document.querySelector('#uploadRevisionModal .btn-primary');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+        btn.disabled = true;
+
+        try {
+            await API.uploadRevision(docId, formData);
+            this.showToast('success', 'Revision Uploaded', 'New version has been uploaded successfully.');
+            this.closeModal();
+            // Refresh document view to show new version
+            this.viewDocument(docId);
+        } catch (error) {
+            console.error(error);
+            this.showToast('error', 'Upload Failed', error.message);
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    }
+
     async viewDocument(docId) {
         try {
             const response = await API.getDocument(docId);
@@ -2224,15 +2510,18 @@ class DomasApp {
             const workflow = response.data.workflow;
             const uploader = doc.uploadedBy || {};
 
-            // Thumbnail / File handling
+            // Normalize Supabase fields
+            const fileUrl = doc.file_url || doc.file?.url || '';
+            const fileName = doc.file_name || doc.file?.filename || '';
+            const fileOriginalName = doc.file_original_name || doc.file?.originalName || '';
+            const fileMimetype = doc.file_mimetype || doc.file?.mimetype || '';
+            const rawFileSize = doc.file_size || doc.file?.size || 0;
+            const createdAt = doc.created_at || doc.createdAt;
+
+            // Thumbnail handling
             let thumbnail = doc.thumbnail;
-            if (!thumbnail && doc.file?.mimetype?.startsWith('image/') && doc.file?.url) {
-                if (doc.file.url.startsWith('http')) {
-                    thumbnail = doc.file.url;
-                } else {
-                    // Fix relative URLs by prepending backend origin
-                    thumbnail = `http://localhost:5000${doc.file.url.startsWith('/') ? '' : '/'}${doc.file.url}`;
-                }
+            if (!thumbnail && fileMimetype.startsWith('image/') && fileUrl) {
+                thumbnail = fileUrl.startsWith('http') ? fileUrl : `http://localhost:5000${fileUrl.startsWith('/') ? '' : '/'}${fileUrl}`;
             }
 
             // Ensure thumbnail has full URL if it exists
@@ -2240,7 +2529,11 @@ class DomasApp {
                 thumbnail = `http://localhost:5000${thumbnail.startsWith('/') ? '' : '/'}${thumbnail}`;
             }
 
-            const fileSize = doc.file?.size ? (doc.file.size / 1024 / 1024).toFixed(2) + ' MB' : '0 MB';
+            const fileSize = (rawFileSize / 1024 / 1024).toFixed(2) + ' MB';
+            const dateObj = new Date(createdAt);
+            const formattedDate = !isNaN(dateObj)
+                ? `${dateObj.toLocaleDateString()} ${dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                : 'Unknown Date';
 
             // Check permissions with robust ID matching
             const currentUserId = this.currentUser.id || this.currentUser._id;
@@ -2313,14 +2606,16 @@ class DomasApp {
 
                                     <div style="background: white; padding: var(--spacing-xl); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); max-width: 600px; width: 100%; position: relative; z-index: 1; min-height: 400px; display: flex; align-items: center; justify-content: center;">
                                         ${thumbnail
-                    ? `<img src="${thumbnail}" alt="${doc.title}" style="width: 100%; border-radius: var(--radius-md);">`
-                    : (doc.file?.mimetype === 'application/pdf'
+                    ? `<img src="${thumbnail}" alt="${doc.title}" style="max-width: 100%; max-height: 100%; border-radius: var(--radius-md); object-fit: contain;">`
+                    : (fileMimetype === 'application/pdf'
                         ? `<div id="pdf-preview-container" style="width: 100%; height: 100%; display: flex; justify-content: center;"><canvas id="pdf-render" style="max-width: 100%; border-radius: var(--radius-md); box-shadow: 0 0 10px rgba(0,0,0,0.1);"></canvas></div>`
                         : `<div style="text-align:center;padding:50px;">
                              <i class="fas fa-file-alt fa-5x" style="color:var(--gray-300)"></i>
-                             <div style="margin-top: 20px; font-weight: 600; color: var(--gray-600);">${doc.file?.originalName || 'Document'}</div>
+                             <div style="margin-top: 20px; font-weight: 600; color: var(--gray-600);">${fileOriginalName || 'Document'}</div>
                              <br><br>
-                             <a href="${doc.file?.url}" target="_blank" class="btn btn-primary" style="display:inline-block;">Download File</a>
+                             <a href="${fileUrl}" target="_blank" class="btn btn-primary" style="display:inline-block;">
+                                <i class="fas fa-download"></i> Download File
+                             </a>
                            </div>`
                     )
                 }
@@ -2346,8 +2641,8 @@ class DomasApp {
                                                     <div class="property-value">${uploader.name || 'Unknown'}</div>
                                                 </div>
                                                 <div class="property-item">
-                                                    <div class="property-label">DATE</div>
-                                                    <div class="property-value">${new Date(doc.createdAt).toLocaleDateString()}</div>
+                                                    <div class="property-label">DATE / TIME</div>
+                                                    <div class="property-value">${formattedDate}</div>
                                                 </div>
                                                 <div class="property-item">
                                                     <div class="property-label">Size</div>
@@ -2360,11 +2655,50 @@ class DomasApp {
                                             </div>
 
                                             <div style="margin-top: var(--spacing-xl);">
-                                                <a href="${doc.file?.url}" target="_blank" class="btn btn-outline" style="width: 100%; margin-bottom: var(--spacing-sm); display: flex; align-items: center; justify-content: center; gap: 8px;">
+                                                <a href="${fileUrl}" target="_blank" class="btn btn-outline" style="width: 100%; margin-bottom: var(--spacing-sm); display: flex; align-items: center; justify-content: center; gap: 8px;">
                                                     <i class="fas fa-external-link-alt"></i> View Full File
                                                 </a>
                                                 
-                                                ${workflow && workflow.overallStatus !== 'Approved' && workflow.stages[workflow.currentStageIndex]?.assignee?.id === this.currentUser.id ? `
+                                                ${(() => {
+                    // Determine if current user should see action buttons
+                    if (!workflow) return '';
+
+                    const overallStatus = workflow.overall_status || workflow.overallStatus;
+                    if (overallStatus === 'Approved' || overallStatus === 'Rejected') return '';
+
+                    const stageIndex = workflow.current_stage_index ?? workflow.currentStageIndex ?? 0;
+                    const currentStage = workflow.stages ? workflow.stages[stageIndex] : null;
+
+                    const currentUserId = this.currentUser.id || this.currentUser._id;
+
+                    // Assignee could be a string ID or an object with id
+                    let stageAssigneeId = null;
+                    if (currentStage) {
+                        stageAssigneeId = typeof currentStage.assignee === 'object'
+                            ? (currentStage.assignee?.id || currentStage.assignee?._id)
+                            : currentStage.assignee;
+                    }
+
+                    const isCurrentApprover = stageAssigneeId && currentUserId && String(stageAssigneeId) === String(currentUserId);
+
+                    // Check if user is any assignee in the pending stages
+                    const isAnyPendingReviewer = workflow.stages && workflow.stages.some(stage => {
+                        if (stage.status === 'current' || stage.status === 'pending') {
+                            const assigneeId = typeof stage.assignee === 'object'
+                                ? (stage.assignee?.id || stage.assignee?._id)
+                                : stage.assignee;
+                            return assigneeId && String(assigneeId) === String(currentUserId);
+                        }
+                        return false;
+                    });
+
+                    // Allow Super Admins and users with Approver role
+                    const isSuperAdmin = this.currentUser.role === 'Super Admin';
+                    const isApproverRole = this.currentUser.role === 'Approver';
+
+                    if (!isCurrentApprover && !isAnyPendingReviewer && !isSuperAdmin && !isApproverRole) return '';
+
+                    return `
                                                     <div style="margin-top: var(--spacing-lg); border-top: 1px solid var(--gray-100); padding-top: var(--spacing-lg);">
                                                         <h4 style="font-size: var(--font-size-sm); margin-bottom: var(--spacing-md);">YOUR ACTION REQUIRED</h4>
                                                         <button class="btn btn-primary" onclick="app.approveWorkflow('${docId}', '${workflow.id}')" style="width: 100%; margin-bottom: var(--spacing-sm);">
@@ -2379,7 +2713,8 @@ class DomasApp {
                                                             </button>
                                                         </div>
                                                     </div>
-                                                ` : ''}
+                                                    `;
+                })()}
                                             </div>
                                         </div>
 
@@ -3179,6 +3514,21 @@ class DomasApp {
         if (query.length < 2) return;
         console.log('Global search for:', query);
         // Implement real search if needed
+    }
+    showLoader(text = 'Loading...') {
+        const loader = document.getElementById('globalLoader');
+        if (loader) {
+            const loaderText = loader.querySelector('.loader-text');
+            if (loaderText) loaderText.textContent = text;
+            loader.classList.add('show');
+        }
+    }
+
+    hideLoader() {
+        const loader = document.getElementById('globalLoader');
+        if (loader) {
+            loader.classList.remove('show');
+        }
     }
 }
 

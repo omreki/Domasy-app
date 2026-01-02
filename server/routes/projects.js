@@ -12,7 +12,7 @@ router.route('/')
 
 router.route('/:id')
     .get(protect, getProject)
-    .put(protect, authorize('Editor', 'Super Admin'), invalidateCacheMiddleware(cachePatterns), updateProject)
-    .delete(protect, authorize('Super Admin'), invalidateCacheMiddleware(cachePatterns), deleteProject);
+    .put(protect, invalidateCacheMiddleware(cachePatterns), updateProject)
+    .delete(protect, invalidateCacheMiddleware(cachePatterns), deleteProject);
 
 module.exports = router;

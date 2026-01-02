@@ -1,242 +1,256 @@
-const { db, bucket, FieldValue } = require('../config/firebase');
-const { v4: uuidv4 } = require('uuid');
-const path = require('path');
+const supabase = require('../config/supabase');
+const fs = require('fs');
 
-const COLLECTION = 'documents';
+const TABLE = 'documents';
+const BUCKET = 'documents';
 
-// Helper to normalize Firestore dates and handle document URLs
-const mapDoc = (doc) => {
-    const data = doc.data();
-    const mapped = {
-        ...data,
-        createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt,
-        updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : data.updatedAt
-    };
-
-    // If using local storage, ensure URL is absolute if it's relative
-    if (mapped.file && mapped.file.url && !mapped.file.url.startsWith('http')) {
-        // We let the frontend handle prepending the base URL if needed
-    }
-
-    return mapped;
-};
+const { generateThumbnail } = require('../utils/thumbnailGenerator');
 
 class DocumentService {
+    // Helper to upload file to storage
+    static async uploadFileToStorage(file) {
+        if (!file) return null;
+
+        try {
+            const fileContent = fs.readFileSync(file.path);
+            const storagePath = `uploads/${Date.now()}_${file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+
+            // Upload to Supabase Storage
+            const { data: storageData, error: storageError } = await supabase.storage
+                .from(BUCKET)
+                .upload(storagePath, fileContent, {
+                    contentType: file.mimetype,
+                    upsert: false
+                });
+
+            if (storageError) throw new Error(`Storage Error: ${storageError.message}`);
+
+            // Get Public URL
+            const { data: { publicUrl } } = supabase.storage
+                .from(BUCKET)
+                .getPublicUrl(storagePath);
+
+            const fileData = {
+                file_name: file.filename,
+                file_original_name: file.originalname,
+                file_mimetype: file.mimetype,
+                file_size: file.size,
+                file_path: storageData.path, // Supabase storage path
+                file_url: publicUrl
+            };
+
+            // Cleanup local file
+            fs.unlinkSync(file.path);
+
+            return fileData;
+        } catch (err) {
+            console.error('File storage failed:', err);
+            throw new Error(`File upload helper failed: ${err.message}`);
+        }
+    }
+
     // Create document
     static async create(documentData, file) {
-        const docRef = db.collection(COLLECTION).doc();
-
         let fileData = null;
+        let thumbnail = null;
 
-        // Save file info if provided (multer handles saving to disk)
         if (file) {
-            const fileUrl = `/uploads/${file.filename}`;
+            // Generate Thumbnail if PDF
+            if (file.mimetype === 'application/pdf') {
+                thumbnail = await generateThumbnail(file);
+            }
 
-            fileData = {
-                filename: file.filename,
-                originalName: file.originalname,
-                mimetype: file.mimetype,
-                size: file.size,
-                path: file.path, // Full path on disk
-                url: fileUrl
-            };
+            fileData = await this.uploadFileToStorage(file);
         }
 
         const document = {
-            id: docRef.id,
             title: documentData.title,
             description: documentData.description || null,
-            category: documentData.category,
+            category: documentData.category, // assuming string
             status: documentData.status || 'Uploaded',
-            file: fileData,
-            thumbnail: documentData.thumbnail || null,
+
+            // File fields
+            ...(fileData || {}),
+
+            thumbnail: thumbnail || documentData.thumbnail || null,
             version: 1,
-            uploadedBy: documentData.uploadedBy,
-            currentApprover: documentData.currentApprover || null,
-            approvalStage: documentData.approvalStage || 'Manager Review',
-            project: documentData.project || null,
+            uploaded_by: documentData.uploadedBy, // from req.user.id
+            current_approver: (documentData.currentApprover && documentData.currentApprover !== '') ? documentData.currentApprover : null,
+            approval_stage: documentData.approvalStage || 'Manager Review',
+            project_id: (documentData.project && documentData.project !== 'null' && documentData.project !== '') ? documentData.project : null,
             tags: documentData.tags || [],
-            virusScanStatus: 'Passed',
+            virus_scan_status: 'Passed',
             metadata: documentData.metadata || {},
-            createdAt: FieldValue.serverTimestamp(),
-            updatedAt: FieldValue.serverTimestamp()
+
+            created_at: new Date(),
+            updated_at: new Date()
         };
 
-        await docRef.set(document);
+        const { data, error } = await supabase
+            .from(TABLE)
+            .insert(document)
+            .select()
+            .single();
 
-        return {
-            ...document,
-            createdAt: new Date(),
-            updatedAt: new Date()
-        };
+        if (error) throw new Error(`Database Error: ${error.message}`);
+
+        return data;
     }
 
     // Find document by ID
     static async findById(id) {
-        const doc = await db.collection(COLLECTION).doc(id).get();
-        if (!doc.exists) return null;
-        return mapDoc(doc);
+        const { data, error } = await supabase
+            .from(TABLE)
+            .select('*')
+            .eq('id', id)
+            .single();
+
+        if (error) return null;
+        return data;
     }
 
     // Get all documents with filters
     static async getAll(filters = {}, options = {}) {
-        const startTime = Date.now();
-        let query = db.collection(COLLECTION);
+        let query = supabase.from(TABLE).select('*');
 
         // Apply filters
-        if (filters.category) {
-            query = query.where('category', '==', filters.category);
-        }
+        if (filters.category) query = query.eq('category', filters.category);
+        if (filters.status) query = query.eq('status', filters.status);
+        if (filters.uploadedBy) query = query.eq('uploaded_by', filters.uploadedBy);
+        if (filters.currentApprover) query = query.eq('current_approver', filters.currentApprover);
+        if (filters.project) query = query.eq('project_id', filters.project); // mapped project -> project_id
 
-        if (filters.status) {
-            query = query.where('status', '==', filters.status);
-        }
-
-        if (filters.uploadedBy) {
-            query = query.where('uploadedBy', '==', filters.uploadedBy);
-        }
-
-        if (filters.currentApprover) {
-            query = query.where('currentApprover', '==', filters.currentApprover);
-        }
-
-        if (filters.project) {
-            query = query.where('project', '==', filters.project);
+        // Search
+        if (filters.search) {
+            query = query.or(`title.ilike.%${filters.search}%,description.ilike.%${filters.search}%`);
         }
 
         // Pagination
-        const limit = options.limit || 50; // Increased default for better UX
+        const limit = options.limit || 50;
         const page = options.page || 1;
+        const from = (page - 1) * limit;
+        const to = from + limit - 1;
 
-        query = query.orderBy('createdAt', 'desc').limit(limit);
+        query = query.order('created_at', { ascending: false }).range(from, to);
 
-        if (page > 1) {
-            const offset = (page - 1) * limit;
-            query = query.offset(offset);
-        }
-
-        const snapshot = await query.get();
-
-        // Log query performance
-        const queryTime = Date.now() - startTime;
-        if (queryTime > 1000) {
-            console.warn(`[SLOW QUERY] DocumentService.getAll took ${queryTime}ms for ${snapshot.size} documents`);
-        }
-
-        let documents = snapshot.docs.map(mapDoc);
-
-        // Client-side search (Firestore doesn't support full-text search)
-        // TODO: Consider using Algolia for better search performance
-        if (filters.search) {
-            const searchLower = filters.search.toLowerCase();
-            documents = documents.filter(doc =>
-                doc.title.toLowerCase().includes(searchLower) ||
-                (doc.description && doc.description.toLowerCase().includes(searchLower))
-            );
-        }
-
-        return documents;
+        const { data, error } = await query;
+        if (error) throw new Error(error.message);
+        return data;
     }
 
     // Update document
     static async update(id, updateData) {
-        const docRef = db.collection(COLLECTION).doc(id);
-
         const updates = {
             ...updateData,
-            updatedAt: FieldValue.serverTimestamp()
+            updated_at: new Date()
         };
 
-        await docRef.update(updates);
+        // Sanitize
+        delete updates._id;
+        delete updates.reviewers; // Handled separately in controller
+        delete updates.teamMembers;
+        delete updates.uploadedBy; // Should not change
 
-        const updated = await docRef.get();
-        return mapDoc(updated);
+        // Map camelCase to snake_case if valid
+        if (updates.approvalStage) {
+            updates.approval_stage = updates.approvalStage;
+            delete updates.approvalStage;
+        }
+        if (updates.currentApprover !== undefined) {
+            updates.current_approver = (updates.currentApprover && updates.currentApprover !== '') ? updates.currentApprover : null;
+            delete updates.currentApprover;
+        }
+        if (updates.project !== undefined) {
+            updates.project_id = (updates.project && updates.project !== '' && updates.project !== 'null') ? updates.project : null;
+            delete updates.project;
+        }
+
+        const { data, error } = await supabase
+            .from(TABLE)
+            .update(updates)
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (error) throw new Error(error.message);
+        return data;
     }
 
     // Delete document
     static async delete(id) {
         const document = await this.findById(id);
+        if (!document) throw new Error('Document not found');
 
-        if (!document) {
-            throw new Error('Document not found');
+        // 1. Delete associated Audit Logs (Foreign Key Constraint)
+        const { error: auditError } = await supabase
+            .from('audit_logs')
+            .delete()
+            .eq('document_id', id);
+
+        if (auditError) throw new Error(`Failed to clean up audit logs: ${auditError.message}`);
+
+        // 2. Delete associated Approval Workflow
+        // (Schema has ON DELETE CASCADE usually, but let's be safe if it doesn't)
+        const { error: workflowError } = await supabase
+            .from('approval_workflows')
+            .delete()
+            .eq('document_id', id);
+
+        if (workflowError && workflowError.code !== 'PGRST116') {
+            console.warn('Failed to delete workflow (might not exist or cascaded):', workflowError.message);
         }
 
-        // Delete file from local storage
-        if (document.file && document.file.path) {
-            try {
-                const fs = require('fs');
-                if (fs.existsSync(document.file.path)) {
-                    fs.unlinkSync(document.file.path);
-                }
-            } catch (error) {
-                console.error('Error deleting file from local storage:', error);
-            }
+        // 3. Delete from Storage
+        if (document.file_path) {
+            const { error: storageError } = await supabase.storage
+                .from(BUCKET)
+                .remove([document.file_path]);
+
+            if (storageError) console.warn('Failed to delete file from storage', storageError);
         }
 
-        // Delete document from Firestore
-        await db.collection(COLLECTION).doc(id).delete();
-    }
+        // 4. Delete from DB
+        const { error } = await supabase
+            .from(TABLE)
+            .delete()
+            .eq('id', id);
 
-    // Get file download URL
-    static async getDownloadUrl(filePath) {
-        // For local storage, if filePath is already a URL or relative path
-        // we just return it. If it's a disk path, we might need to map it.
-        // But usually, we just use document.file.url directly on frontend.
-        return filePath;
+        if (error) throw new Error(error.message);
     }
 
     // Count documents
     static async count(filters = {}) {
-        let query = db.collection(COLLECTION);
+        let query = supabase.from(TABLE).select('*', { count: 'exact', head: true });
 
-        if (filters.status) {
-            query = query.where('status', '==', filters.status);
-        }
+        if (filters.status) query = query.eq('status', filters.status);
+        if (filters.uploadedBy) query = query.eq('uploaded_by', filters.uploadedBy);
 
-        if (filters.uploadedBy) {
-            query = query.where('uploadedBy', '==', filters.uploadedBy);
-        }
-
-        if (filters.currentApprover) {
-            query = query.where('currentApprover', '==', filters.currentApprover);
-        }
-
-        if (filters.project) {
-            query = query.where('project', '==', filters.project);
-        }
-
-        const snapshot = await query.get();
-        return snapshot.size;
+        const { count, error } = await query;
+        if (error) throw new Error(error.message);
+        return count;
     }
 
     // Get documents by project
     static async getByProject(projectId) {
-        try {
-            const snapshot = await db.collection(COLLECTION)
-                .where('project', '==', projectId)
-                .orderBy('createdAt', 'desc')
-                .get();
+        const { data, error } = await supabase
+            .from(TABLE)
+            .select('*')
+            .eq('project_id', projectId)
+            .order('created_at', { ascending: false });
 
-            return snapshot.docs.map(mapDoc);
-        } catch (error) {
-            // Fallback for missing index: return unordered if order fails
-            if (error.code === 9 || error.message.includes('requires an index')) {
-                console.warn('Firestore Index missing for getByProject, falling back to unordered fetch.');
-                const snapshot = await db.collection(COLLECTION)
-                    .where('project', '==', projectId)
-                    .get();
-                return snapshot.docs.map(mapDoc);
-            }
-            throw error;
-        }
+        if (error) throw error;
+        return data;
     }
 
+    // Count documents by project
     static async countByProject(projectId) {
-        // Simple count doesn't require composite index
-        const snapshot = await db.collection(COLLECTION)
-            .where('project', '==', projectId)
-            .get();
-        return snapshot.size;
+        const { count, error } = await supabase
+            .from(TABLE)
+            .select('*', { count: 'exact', head: true })
+            .eq('project_id', projectId);
+
+        if (error) throw error;
+        return count || 0;
     }
 }
 

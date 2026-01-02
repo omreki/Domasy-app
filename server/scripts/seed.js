@@ -5,51 +5,83 @@ const path = require('path');
 dotenv.config({ path: path.join(__dirname, '../.env') });
 
 const UserService = require('../services/UserService');
-const admin = require('firebase-admin');
 
-// Initialize Firebase (if not already handled by UserService require chain, but safer here)
-try {
-    const serviceAccount = require(process.env.FIREBASE_SERVICE_ACCOUNT_PATH || '../config/serviceAccountKey.json');
-    if (admin.apps.length === 0) {
-        admin.initializeApp({
-            credential: admin.credential.cert(serviceAccount)
-        });
-    }
-} catch (error) {
-    console.warn('Firebase initialization warning:', error.message);
-}
-
-const seedAdmin = async () => {
+const seedUsers = async () => {
     try {
-        const email = process.env.ADMIN_EMAIL || 'admin@domasy.com';
-        const password = process.env.ADMIN_PASSWORD || 'password123';
+        // --- ADMIN USER ---
+        const adminEmail = process.env.ADMIN_EMAIL || 'admin@domasy.com';
+        const adminPassword = process.env.ADMIN_PASSWORD || 'password123';
 
-        console.log(`Checking for admin user: ${email}...`);
-        const existingUser = await UserService.findByEmail(email);
+        console.log(`Checking for admin user: ${adminEmail}...`);
+        let adminUser = await UserService.findByEmail(adminEmail);
 
-        if (existingUser) {
-            console.log('Admin user already exists.');
-            process.exit(0);
+        if (adminUser) {
+            console.log('✅ Admin user already exists.');
+        } else {
+            console.log('Creating admin user...');
+            try {
+                await UserService.create({
+                    name: process.env.ADMIN_NAME || 'Admin User',
+                    email: adminEmail,
+                    password: adminPassword,
+                    role: 'Super Admin',
+                    department: 'IT',
+                    status: 'Active'
+                });
+                console.log('✅ Admin user created successfully');
+            } catch (err) {
+                if (err.message.includes('unique constraint') || err.message.includes('already registered')) {
+                    console.log('⚠️  Admin user likely exists in Auth but not in public table. Skipping...');
+                } else {
+                    console.error('❌ Error creating admin:', err.message);
+                }
+            }
         }
 
-        console.log('Creating admin user...');
-        await UserService.create({
-            name: process.env.ADMIN_NAME || 'Admin User',
-            email,
-            password,
-            role: 'Super Admin',
-            department: 'IT',
-            status: 'Active'
-        });
+        // --- DEFAULT USER (SUPER ADMIN) ---
+        const userEmail = 'user@domasy.com';
+        const userPassword = 'password123';
 
-        console.log('✅ Admin user created successfully');
-        console.log(`Email: ${email}`);
-        console.log(`Password: ${password}`);
+        console.log(`Checking for default user: ${userEmail}...`);
+        let defaultUser = await UserService.findByEmail(userEmail);
+
+        if (defaultUser) {
+            console.log('✅ Default user found.');
+            if (defaultUser.role !== 'Super Admin') {
+                console.log('🔄 Updating default user role to Super Admin...');
+                await UserService.update(defaultUser.id, { role: 'Super Admin' });
+                console.log('✅ Default user role updated.');
+            } else {
+                console.log('✅ Default user is already Super Admin.');
+            }
+        } else {
+            console.log('Creating default user...');
+            try {
+                await UserService.create({
+                    name: 'Default User',
+                    email: userEmail,
+                    password: userPassword,
+                    role: 'Super Admin',
+                    department: 'General',
+                    status: 'Active'
+                });
+                console.log('✅ Default user created successfully as Super Admin');
+            } catch (err) {
+                if (err.message.includes('unique constraint') || err.message.includes('already registered')) {
+                    console.log('⚠️  Default user likely exists in Auth but not in public table. Skipping...');
+                } else {
+                    console.error('❌ Error creating default user:', err.message);
+                }
+            }
+        }
+
+        console.log('🎉 Seeding completed.');
         process.exit(0);
+
     } catch (error) {
-        console.error('❌ Error seeding admin user:', error);
+        console.error('❌ Unexpected error during seeding:', error);
         process.exit(1);
     }
 };
 
-seedAdmin();
+seedUsers();

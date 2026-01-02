@@ -1,8 +1,8 @@
-const jwt = require('jsonwebtoken');
+const supabase = require('../config/supabase');
 const UserService = require('../services/UserService');
 const AuditLogService = require('../services/AuditLogService');
 
-// Protect routes - verify JWT token
+// Protect routes - verify Supabase JWT token
 exports.protect = async (req, res, next) => {
     let token;
 
@@ -20,18 +20,39 @@ exports.protect = async (req, res, next) => {
     }
 
     try {
-        // Verify token
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        // Verify token with Supabase Auth
+        const { data: { user }, error } = await supabase.auth.getUser(token);
 
-        // Get user from token
-        // decoded.id comes from generateToken
-        req.user = await UserService.findById(decoded.id);
-
-        if (!req.user) {
+        if (error || !user) {
             return res.status(401).json({
                 success: false,
-                message: 'User not found'
+                message: 'Not authorized to access this route'
             });
+        }
+
+        // Get full profile from public.users
+        req.user = await UserService.findById(user.id);
+
+        if (!req.user) {
+            // Fallback: Create public profile if missing (Sync with Auth)
+            try {
+                req.user = await UserService.createProfile({
+                    id: user.id,
+                    email: user.email,
+                    name: user.user_metadata?.name || user.email.split('@')[0],
+                    role: 'Viewer',
+                    status: 'Active'
+                });
+            } catch (err) {
+                console.error('Failed to auto-create user profile:', err);
+                // Last resort fallback
+                req.user = {
+                    id: user.id,
+                    email: user.email,
+                    role: 'Viewer',
+                    status: 'Active'
+                };
+            }
         }
 
         // Check if user is active
@@ -41,9 +62,6 @@ exports.protect = async (req, res, next) => {
                 message: 'Your account is not active. Please contact administrator.'
             });
         }
-
-        // Attach user ID directly for convenience like Mongoose did with _id
-        req.user._id = req.user.id;
 
         next();
     } catch (error) {
@@ -58,7 +76,7 @@ exports.protect = async (req, res, next) => {
 // Grant access to specific roles
 exports.authorize = (...roles) => {
     return (req, res, next) => {
-        if (!roles.includes(req.user.role)) {
+        if (!req.user.role || !roles.includes(req.user.role)) {
             return res.status(403).json({
                 success: false,
                 message: `User role '${req.user.role}' is not authorized to access this route`
@@ -117,9 +135,7 @@ exports.auditLog = (action, actionType = 'info') => {
     };
 };
 
-// Generate JWT token
+// Generate Token (Unused now, Supabase generates it)
 exports.generateToken = (id) => {
-    return jwt.sign({ id }, process.env.JWT_SECRET, {
-        expiresIn: process.env.JWT_EXPIRE
-    });
+    return null;
 };

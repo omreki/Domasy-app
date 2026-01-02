@@ -1,6 +1,6 @@
 const UserService = require('../services/UserService');
 const AuditLogService = require('../services/AuditLogService');
-const { generateToken } = require('../middleware/auth');
+const supabase = require('../config/supabase'); // Import supabase client
 
 // @desc    Register user
 // @route   POST /api/auth/register
@@ -9,7 +9,8 @@ exports.register = async (req, res) => {
     try {
         const { name, email, password, role, department } = req.body;
 
-        // Check if user exists
+        // Check if user exists (in public.users)
+        // UserService.findByEmail uses Supabase now
         const userExists = await UserService.findByEmail(email);
         if (userExists) {
             return res.status(400).json({
@@ -19,6 +20,7 @@ exports.register = async (req, res) => {
         }
 
         // Create user
+        // This creates Auth User + Public Profile
         const user = await UserService.create({
             name,
             email,
@@ -51,6 +53,7 @@ exports.register = async (req, res) => {
             }
         });
     } catch (error) {
+        console.error('Register Error:', error);
         res.status(500).json({
             success: false,
             message: error.message
@@ -65,7 +68,6 @@ exports.login = async (req, res) => {
     try {
         const { email, password } = req.body;
 
-        // Validate email & password
         if (!email || !password) {
             return res.status(400).json({
                 success: false,
@@ -73,21 +75,29 @@ exports.login = async (req, res) => {
             });
         }
 
-        // Check for user
-        const user = await UserService.findByEmail(email);
-        if (!user) {
+        // Login with Supabase Auth
+        const { data, error } = await supabase.auth.signInWithPassword({
+            email,
+            password
+        });
+
+        if (error) {
             return res.status(401).json({
                 success: false,
                 message: 'Invalid credentials'
             });
         }
 
-        // Check if password matches
-        const isMatch = await UserService.comparePassword(password, user.password);
-        if (!isMatch) {
-            return res.status(401).json({
+        const authUser = data.user;
+        const session = data.session;
+
+        // Fetch full profile from public.users to check status/role
+        const user = await UserService.findById(authUser.id);
+
+        if (!user) {
+            return res.status(404).json({
                 success: false,
-                message: 'Invalid credentials'
+                message: 'User profile not found'
             });
         }
 
@@ -112,14 +122,11 @@ exports.login = async (req, res) => {
             userAgent: req.headers['user-agent']
         });
 
-        // Generate token
-        const token = generateToken(user.id);
-
         res.status(200).json({
             success: true,
             message: 'Login successful',
             data: {
-                token,
+                token: session.access_token, // Supabase JWT
                 user: {
                     id: user.id,
                     name: user.name,
@@ -128,11 +135,12 @@ exports.login = async (req, res) => {
                     status: user.status,
                     avatar: user.avatar,
                     department: user.department,
-                    lastLogin: user.lastLogin
+                    lastLogin: user.last_login
                 }
             }
         });
     } catch (error) {
+        console.error('Login Error:', error);
         res.status(500).json({
             success: false,
             message: error.message
@@ -145,8 +153,7 @@ exports.login = async (req, res) => {
 // @access  Private
 exports.getMe = async (req, res) => {
     try {
-        // req.user is set in protect middleware, populated via UserService
-        const user = req.user;
+        const user = req.user; // Set by middleware
 
         res.status(200).json({
             success: true,
@@ -159,7 +166,7 @@ exports.getMe = async (req, res) => {
                     status: user.status,
                     avatar: user.avatar,
                     department: user.department,
-                    lastLogin: user.lastLogin
+                    lastLogin: user.last_login
                 }
             }
         });
@@ -176,7 +183,12 @@ exports.getMe = async (req, res) => {
 // @access  Private
 exports.logout = async (req, res) => {
     try {
-        // Create audit log
+        // Sign out from Supabase (backend side doesn't do much for stateless JWT, 
+        // but can revoke refresh token if we had one)
+        // supabase.auth.admin.signOut(token) is not exactly how it works.
+        // Frontend handles destroying local token.
+        // We just log it.
+
         await AuditLogService.create({
             user: req.user.id,
             action: 'Logout',
@@ -204,46 +216,45 @@ exports.updatePassword = async (req, res) => {
     try {
         const { currentPassword, newPassword } = req.body;
 
-        // Need to re-fetch to get password hash if not available on req.user
-        // But in findByEmail/Id we usually return the full obj including password field from db 
-        // (UserService.findById returns data(), password is there)
-        // Let's ensure protect mw returns user obj. 
-        // NOTE: In the UserService.create implementation, we stripe password. 
-        // In findById, we return raw data. Assuming doc data contains hashed password.
+        // Supabase Admin Update
+        // Note: verifying current password is hard with Admin API without signing in.
+        // But the user is logged in (req.user). 
+        // Ideally, user should use supabase client on frontend to change password.
 
-        const user = await UserService.findById(req.user.id);
+        // Here, allowing simple override for now since we are admin/user themselves
+        // SECURITY NOTE: This skips old password verification unless we re-login first.
+        // To verify old password, we could try to signIn with email + oldPassword.
 
-        // Check current password
-        const isMatch = await UserService.comparePassword(currentPassword, user.password);
-        if (!isMatch) {
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+            email: req.user.email,
+            password: currentPassword
+        });
+
+        if (signInError) {
             return res.status(401).json({
                 success: false,
                 message: 'Current password is incorrect'
             });
         }
 
-        // Hash new password manually since we are not using mongoose hooks
-        const bcrypt = require('bcryptjs');
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(newPassword, salt);
+        const { error } = await supabase.auth.admin.updateUserById(
+            req.user.id,
+            { password: newPassword }
+        );
 
-        await UserService.update(user.id, { password: hashedPassword });
+        if (error) throw error;
 
-        // Create audit log
         await AuditLogService.create({
-            user: user.id,
+            user: req.user.id,
             action: 'User Updated',
             actionType: 'success',
             details: 'Password updated successfully',
             ipAddress: req.ip
         });
 
-        const token = generateToken(user.id);
-
         res.status(200).json({
             success: true,
-            message: 'Password updated successfully',
-            data: { token }
+            message: 'Password updated successfully'
         });
     } catch (error) {
         res.status(500).json({
@@ -274,16 +285,7 @@ exports.updateProfile = async (req, res) => {
             success: true,
             message: 'Profile updated successfully',
             data: {
-                user: {
-                    id: updatedUser.id,
-                    name: updatedUser.name,
-                    email: updatedUser.email,
-                    role: updatedUser.role,
-                    status: updatedUser.status,
-                    avatar: updatedUser.avatar,
-                    department: updatedUser.department,
-                    lastLogin: updatedUser.lastLogin
-                }
+                user: updatedUser
             }
         });
     } catch (error) {

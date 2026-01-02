@@ -1,5 +1,6 @@
 const UserService = require('../services/UserService');
 const AuditLogService = require('../services/AuditLogService');
+const StorageService = require('../services/StorageService');
 
 // @desc    Get all users
 // @route   GET /api/users
@@ -123,6 +124,89 @@ exports.createUser = async (req, res) => {
         res.status(201).json({
             success: true,
             data: { user: { ...newUser, _id: newUser.id } }
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+
+// @desc    Update user profile
+// @route   PUT /api/users/profile
+// @access  Private
+exports.updateProfile = async (req, res) => {
+    try {
+        const { name, department } = req.body;
+        const userId = req.user.id;
+
+        const updatedUser = await UserService.update(userId, { name, department });
+
+        await AuditLogService.create({
+            user: userId,
+            action: 'User Updated',
+            actionType: 'info',
+            details: `Profile updated by user`,
+            ipAddress: req.ip
+        });
+
+        res.status(200).json({
+            success: true,
+            data: {
+                user: {
+                    ...updatedUser,
+                    _id: updatedUser.id
+                }
+            }
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+
+// @desc    Update user avatar
+// @route   POST /api/users/avatar
+// @access  Private
+exports.updateAvatar = async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ success: false, message: 'Please upload an image' });
+        }
+
+        const userId = req.user.id;
+        const user = await UserService.findById(userId);
+
+        // Upload new avatar
+        const avatarUrl = await StorageService.uploadFile(req.file, 'avatars', 'user-avatars');
+
+        // Delete old avatar if it exists and is from our storage
+        if (user.avatar && user.avatar.includes('supabase')) {
+            await StorageService.deleteFile(user.avatar, 'avatars');
+        }
+
+        // Update user profile
+        const updatedUser = await UserService.update(userId, { avatar: avatarUrl });
+
+        await AuditLogService.create({
+            user: userId,
+            action: 'User Updated',
+            actionType: 'info',
+            details: `Profile photo updated`,
+            ipAddress: req.ip
+        });
+
+        res.status(200).json({
+            success: true,
+            data: {
+                user: {
+                    ...updatedUser,
+                    _id: updatedUser.id
+                }
+            }
         });
     } catch (error) {
         res.status(500).json({

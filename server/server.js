@@ -20,19 +20,12 @@ if (fs.existsSync(envPath)) {
     dotenv.config();
 }
 
-// Helper to check for Firebase credentials
-const checkFirebaseConfig = () => {
-    if (!process.env.FIREBASE_PROJECT_ID && !process.env.FIREBASE_SERVICE_ACCOUNT_PATH) {
-        console.warn('⚠️  WARNING: Firebase credentials missing in .env');
-        console.warn('   Please set FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY');
-        console.warn('   OR set FIREBASE_SERVICE_ACCOUNT_PATH to your serviceAccountKey.json');
-    }
-};
-
-checkFirebaseConfig();
+// Firebase check removed
 
 // Initialize Firebase
-require('./config/firebase');
+// Initialize Supabase
+require('./config/supabase');
+
 
 // Import caching middleware
 const { cacheMiddleware } = require('./middleware/cache');
@@ -46,6 +39,7 @@ const approvalRoutes = require('./routes/approvals');
 const auditRoutes = require('./routes/audit');
 const dashboardRoutes = require('./routes/dashboard');
 const categoryRoutes = require('./routes/categories');
+const settingsRoutes = require('./routes/settings');
 
 // Initialize express app
 const app = express();
@@ -140,6 +134,7 @@ app.use('/api/audit', auditRoutes);
 // Cache dashboard stats for 2 minutes (frequently accessed, but can be slightly stale)
 app.use('/api/dashboard', cacheMiddleware(120000), dashboardRoutes);
 app.use('/api/categories', categoryRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -191,7 +186,7 @@ const PORT = process.env.PORT || 5000;
 if (!process.env.VERCEL) {
     app.listen(PORT, () => {
         console.log(`🚀 Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
-        console.log(`🔥 Connected to Firebase project: ${process.env.FIREBASE_PROJECT_ID || 'Unknown'}`);
+        console.log(`⚡ Connected to Supabase`);
     });
 }
 

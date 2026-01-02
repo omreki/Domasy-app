@@ -1,82 +1,73 @@
-const { db, FieldValue } = require('../config/firebase');
+const supabase = require('../config/supabase');
 
-const COLLECTION = 'audit_logs';
+const TABLE = 'audit_logs';
 
 class AuditLogService {
     // Create log
     static async create(logData) {
         try {
-            const docRef = db.collection(COLLECTION).doc();
-
             const log = {
-                id: docRef.id,
-                user: logData.user ? logData.user.toString() : null, // Store User ID
+                user_id: logData.user ? logData.user.toString() : null,
                 action: logData.action,
-                actionType: logData.actionType || 'info',
-                document: logData.document ? logData.document.toString() : null,
-                documentTitle: logData.documentTitle || null,
-                project: logData.project ? logData.project.toString() : null,
+                action_type: logData.actionType || 'info',
+                document_id: logData.document ? logData.document.toString() : null,
+                document_title: logData.documentTitle || null,
+                project_id: logData.project ? logData.project.toString() : null,
                 details: logData.details || '',
-                ipAddress: logData.ipAddress || null,
-                userAgent: logData.userAgent || null,
+                ip_address: logData.ipAddress || null,
+                user_agent: logData.userAgent || null,
                 automated: logData.automated || false,
                 metadata: logData.metadata || {},
-                createdAt: FieldValue.serverTimestamp()
+                created_at: new Date()
             };
 
-            await docRef.set(log);
-            return log;
+            const { data, error } = await supabase
+                .from(TABLE)
+                .insert(log)
+                .select()
+                .single();
+
+            if (error) throw error;
+            return data;
         } catch (error) {
             console.error('Error creating audit log:', error);
-            // Don't crash app on audit log error
             return null;
         }
     }
 
     // Get all logs
     static async getAll(filters = {}, options = {}) {
-        let query = db.collection(COLLECTION).orderBy('createdAt', 'desc');
+        let query = supabase.from(TABLE).select('*');
 
-        if (filters.user) {
-            query = query.where('user', '==', filters.user);
-        }
-
-        if (filters.action) {
-            query = query.where('action', '==', filters.action);
-        }
-
-        if (filters.startDate) {
-            query = query.where('createdAt', '>=', new Date(filters.startDate));
-        }
-
-        if (filters.endDate) {
-            query = query.where('createdAt', '<=', new Date(filters.endDate));
-        }
+        if (filters.user) query = query.eq('user_id', filters.user);
+        if (filters.action) query = query.eq('action', filters.action);
+        if (filters.startDate) query = query.gte('created_at', filters.startDate);
+        if (filters.endDate) query = query.lte('created_at', filters.endDate);
 
         // Pagination
         const limit = options.limit || 50;
         const page = options.page || 1;
+        const from = (page - 1) * limit;
+        const to = from + limit - 1;
 
-        query = query.limit(limit);
+        query = query.order('created_at', { ascending: false }).range(from, to);
 
-        if (page > 1) {
-            const offset = (page - 1) * limit;
-            query = query.offset(offset);
-        }
+        const { data, error } = await query;
+        if (error) throw error;
 
-        const snapshot = await query.get();
-        return snapshot.docs.map(doc => doc.data());
+        return data;
     }
 
     // Count logs
     static async count(filters = {}) {
-        let query = db.collection(COLLECTION);
+        let query = supabase.from(TABLE).select('*', { count: 'exact', head: true });
 
-        if (filters.user) query = query.where('user', '==', filters.user);
-        if (filters.action) query = query.where('action', '==', filters.action);
+        if (filters.user) query = query.eq('user_id', filters.user);
+        if (filters.action) query = query.eq('action', filters.action);
 
-        const snapshot = await query.get();
-        return snapshot.size;
+        const { count, error } = await query;
+        if (error) throw error;
+        return count;
     }
 }
 
