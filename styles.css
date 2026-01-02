@@ -656,6 +656,10 @@ body.layout-top-nav .top-nav-links {
     box-shadow: var(--shadow-md);
 }
 
+.stat-card.clickable {
+    cursor: pointer;
+}
+
 .stat-icon {
     width: 56px;
     height: 56px;
@@ -1322,11 +1326,7 @@ body.layout-top-nav .top-nav-links {
     padding: var(--spacing-md) var(--spacing-lg);
     border-bottom: 1px solid var(--gray-200);
     cursor: pointer;
-    transition: background var(--transition-fast);
-}
-
-.document-list-item:last-child {
-    border-bottom: none;
+    transition: background-color var(--transition-fast);
 }
 
 .document-list-item:hover {
@@ -1372,6 +1372,11 @@ body.layout-top-nav .top-nav-links {
     gap: var(--spacing-md);
     padding: var(--spacing-md) var(--spacing-lg);
     border-bottom: 1px solid var(--gray-200);
+    transition: background-color var(--transition-fast);
+}
+
+.activity-item:hover {
+    background-color: var(--gray-50);
 }
 
 .activity-item:last-child {

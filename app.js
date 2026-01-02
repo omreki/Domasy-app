@@ -592,7 +592,7 @@ class DomasApp {
 
                 <!-- Stats Grid -->
                 <div class="stats-grid">
-                    <div class="stat-card">
+                    <div class="stat-card clickable" onclick="app.navigateTo('documents')" style="cursor: pointer;">
                         <div class="stat-icon primary">
                             <i class="fas fa-file-alt"></i>
                         </div>
@@ -604,7 +604,7 @@ class DomasApp {
                         </div>
                     </div>
 
-                    <div class="stat-card">
+                    <div class="stat-card clickable" onclick="app.navigateTo('documents')" style="cursor: pointer;">
                         <div class="stat-icon warning">
                             <i class="fas fa-clock"></i>
                         </div>
@@ -617,7 +617,7 @@ class DomasApp {
                         </div>
                     </div>
 
-                    <div class="stat-card">
+                    <div class="stat-card clickable" onclick="app.navigateTo('projects')" style="cursor: pointer;">
                         <div class="stat-icon info">
                             <i class="fas fa-folder"></i>
                         </div>
@@ -629,7 +629,7 @@ class DomasApp {
                         </div>
                     </div>
 
-                    <div class="stat-card">
+                    <div class="stat-card clickable" onclick="app.navigateTo('team')" style="cursor: pointer;">
                         <div class="stat-icon success">
                             <i class="fas fa-users"></i>
                         </div>
@@ -734,7 +734,7 @@ class DomasApp {
         const docTitle = log.document_title || log.documentTitle || (log.document?.title !== 'Untitled' ? log.document?.title : '');
 
         return `
-            <div class="activity-item">
+            <div class="activity-item clickable" onclick="app.navigateTo('audit-log')" style="cursor: pointer;">
                 <div class="activity-avatar">
                     ${user && user.avatar ? `<img src="${user.avatar}" alt="${user.name}" style="object-fit: cover;">` : '<div style="width:32px;height:32px;background:var(--gray-100);border-radius:50%;display:flex;align-items:center;justify-content:center;"><i class="fas fa-user" style="color:var(--gray-400);font-size:12px"></i></div>'}
                 </div>
