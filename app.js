@@ -3710,7 +3710,7 @@ class DomasApp {
                                 `).join('') : `
                                     <div class="empty-state" style="padding: 60px; text-align: center;">
                                         <i class="fas ${filter === 'unread' ? 'fa-check-double' : 'fa-bell-slash'} fa-3x mb-3" style="color: var(--gray-300);"></i>
-                                        <p style="color: var(--gray-500);">No ${filter === 'all' ? '' : filter} notifications found.</p>
+                                        <p style="color: var(--gray-500);">No notifications at the moment.</p>
                                     </div>
                                 `}
                             </div>
