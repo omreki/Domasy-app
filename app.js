@@ -678,9 +678,9 @@ class DomasApp {
                             <i class="fas fa-users"></i>
                         </div>
                         <div class="stat-content">
-                            <div class="stat-label">Active Users</div>
+                            <div class="stat-label">Total Users</div>
                             <div class="stat-value">
-                                ${stats.activeUsers}
+                                ${stats.activeUsers || 0}
                             </div>
                         </div>
                     </div>
@@ -1393,16 +1393,17 @@ class DomasApp {
             'Revoked': 'error'
         };
 
-        const lastLoginStr = user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : 'Never';
+        const lastLogin = user.last_login || user.lastLogin;
+        const lastLoginStr = lastLogin ? new Date(lastLogin).toLocaleDateString() : 'Never';
 
         return `
             <tr>
                 <td>
                     <div style="display: flex; align-items: center; gap: var(--spacing-md);">
-                        <img src="${user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=4F46E5&color=fff`}" 
+                        <img src="${user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || 'U')}&background=4F46E5&color=fff`}" 
                              style="width: 36px; height: 36px; border-radius: var(--radius-full);">
                         <div>
-                            <div style="font-weight: 600; font-size: var(--font-size-sm);">${user.name}</div>
+                            <div style="font-weight: 600; font-size: var(--font-size-sm);">${user.name || 'Unnamed User'}</div>
                             <div style="font-size: var(--font-size-xs); color: var(--gray-500);">${user.email}</div>
                         </div>
                     </div>

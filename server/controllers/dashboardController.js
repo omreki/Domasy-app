@@ -21,7 +21,7 @@ exports.getDashboardStats = async (req, res) => {
         try { activeProjects = await ProjectService.count({ status: 'Active' }); }
         catch (e) { console.error('[Dashboard] Project count failed:', e.message); }
 
-        try { activeUsers = await UserService.count({ status: 'Active' }); }
+        try { activeUsers = await UserService.count(); }
         catch (e) { console.error('[Dashboard] User count failed:', e.message); }
 
         try { recentDocuments = await DocumentService.getAll({}, { limit: 5 }); }
