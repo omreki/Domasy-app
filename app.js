@@ -109,11 +109,17 @@ class DomasApp {
             loginSubtitle.textContent = `Sign in to access your secure ${systemName} workspace`;
         }
 
-        // Apply Sidebar Color
+        // Apply Sidebar Colors
         if (this.branding.sidebarColor) {
             document.documentElement.style.setProperty('--sidebar-bg', this.branding.sidebarColor);
         } else {
             document.documentElement.style.removeProperty('--sidebar-bg');
+        }
+
+        if (this.branding.sidebarTextColor) {
+            document.documentElement.style.setProperty('--sidebar-text', this.branding.sidebarTextColor);
+        } else {
+            document.documentElement.style.removeProperty('--sidebar-text');
         }
     }
 
@@ -1962,11 +1968,20 @@ class DomasApp {
                                         </select>
                                     </div>
                                     
-                                    <div class="form-group" style="margin-top: var(--spacing-md);">
-                                        <label class="form-label">Sidebar Theme Color</label>
-                                        <div style="display: flex; align-items: center; gap: var(--spacing-md);">
-                                            <input type="color" class="form-input" id="brandingSidebarColor" value="${this.branding.sidebarColor || '#243B53'}" style="width: 50px; padding: 2px; height: 38px;">
-                                            <span style="font-size: var(--font-size-sm); color: var(--gray-500);">${this.branding.sidebarColor || '#243B53 (Default)'}</span>
+                                    <div class="grid-2" style="margin-top: var(--spacing-md);">
+                                        <div class="form-group">
+                                            <label class="form-label">Sidebar Background Color</label>
+                                            <div style="display: flex; align-items: center; gap: var(--spacing-md);">
+                                                <input type="color" class="form-input" id="brandingSidebarColor" value="${this.branding.sidebarColor || '#243B53'}" style="width: 50px; padding: 2px; height: 38px;">
+                                                <span style="font-size: var(--font-size-sm); color: var(--gray-500);">${this.branding.sidebarColor || '#243B53 (Default)'}</span>
+                                            </div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label">Sidebar Text Color</label>
+                                            <div style="display: flex; align-items: center; gap: var(--spacing-md);">
+                                                <input type="color" class="form-input" id="brandingSidebarTextColor" value="${this.branding.sidebarTextColor || '#ffffff'}" style="width: 50px; padding: 2px; height: 38px;">
+                                                <span style="font-size: var(--font-size-sm); color: var(--gray-500);">${this.branding.sidebarTextColor || '#ffffff (Default)'}</span>
+                                            </div>
                                         </div>
                                     </div>
 
@@ -2088,15 +2103,17 @@ class DomasApp {
         const name = document.getElementById('brandingName').value;
         const displayMode = document.getElementById('brandingDisplayMode').value;
         const sidebarColor = document.getElementById('brandingSidebarColor').value;
+        const sidebarTextColor = document.getElementById('brandingSidebarTextColor').value;
 
         this.showLoader();
 
         try {
-            const response = await API.updateSettings('branding', { name, displayMode, sidebarColor });
+            const response = await API.updateSettings('branding', { name, displayMode, sidebarColor, sidebarTextColor });
             if (response.success) {
                 this.branding.name = name;
                 this.branding.displayMode = displayMode;
                 this.branding.sidebarColor = sidebarColor;
+                this.branding.sidebarTextColor = sidebarTextColor;
                 this.updateBrandingUI();
                 this.showToast('success', 'Branding Updated', 'System branding settings have been saved.');
             }
