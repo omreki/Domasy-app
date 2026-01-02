@@ -3784,7 +3784,22 @@ class DomasApp {
             `;
         } catch (error) {
             console.error('Failed to render notifications:', error);
-            return `<div class="error-state">Failed to load notifications.</div>`;
+            return `
+                <div class="notifications-page">
+                    <div class="page-header mb-4">
+                        <h1 class="page-title">Notifications</h1>
+                    </div>
+                    <div class="card">
+                        <div class="card-body" style="text-align: center; padding: 60px;">
+                            <i class="fas fa-exclamation-circle fa-3x mb-3" style="color: var(--error-500);"></i>
+                            <p style="color: var(--gray-600);">Failed to load notifications: ${error.message}</p>
+                            <button class="btn btn-outline mt-3" onclick="app.loadNotifications()">
+                                <i class="fas fa-sync"></i> Try Again
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
         }
     }
 
