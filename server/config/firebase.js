@@ -71,11 +71,14 @@ try {
         });
         console.log('✅ Firebase Admin initialized successfully');
     } else {
-        const errorMsg = '🛑 CRITICAL SETUP ERROR: No Firebase credentials found. ' +
-            'Please ensure FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY ' +
-            'are set in your environment variables.';
+        const missing = [];
+        if (!process.env.FIREBASE_PROJECT_ID) missing.push('FIREBASE_PROJECT_ID');
+        if (!process.env.FIREBASE_CLIENT_EMAIL) missing.push('FIREBASE_CLIENT_EMAIL');
+        if (!process.env.FIREBASE_PRIVATE_KEY) missing.push('FIREBASE_PRIVATE_KEY');
+
+        const errorMsg = `🛑 CRITICAL SETUP ERROR: Missing Firebase variables: ${missing.join(', ')}. ` +
+            'Please check your Vercel Environment Variables dashboard.';
         console.error(errorMsg);
-        // On Vercel, we shouldn't kill the process, but we should make it obvious what went wrong
         if (process.env.VERCEL) {
             throw new Error(errorMsg);
         }
