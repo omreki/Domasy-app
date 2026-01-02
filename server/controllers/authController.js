@@ -25,8 +25,8 @@ exports.register = async (req, res) => {
             name,
             email,
             password,
-            role: role || 'Viewer',
-            department,
+            role: 'Viewer', // Force Viewer for public registration
+            department: department || 'General',
             status: 'Pending' // Admin needs to activate
         });
 

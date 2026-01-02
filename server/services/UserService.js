@@ -9,14 +9,15 @@ class UserService {
     // However, if this is called by Admin to add a user, we might need to use supabase.auth.admin.createUser
     // Create user profile (Sync from Auth)
     static async createProfile(userData) {
+        const name = userData.name || userData.email.split('@')[0];
         const userProfile = {
             id: userData.id,
-            name: userData.name,
+            name: name,
             email: userData.email.toLowerCase(),
             role: userData.role || 'Viewer',
             status: userData.status || 'Active', // Default to Active
-            avatar: userData.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}&background=4F46E5&color=fff`,
-            department: userData.department || null,
+            avatar: userData.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=4F46E5&color=fff`,
+            department: userData.department || 'General',
             updated_at: new Date()
         };
 
