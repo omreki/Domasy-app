@@ -379,28 +379,50 @@ class DomasApp {
             const sidebar = document.querySelector('.sidebar');
             if (sidebar) sidebar.style.display = 'none'; // Force Inline hide
 
-            // Inject Top Nav Links if not already present
+            // Hide breadcrumb for top-nav layout to save space
+            const breadcrumb = document.getElementById('breadcrumb');
+            if (breadcrumb) breadcrumb.style.display = 'none';
+
+            // Inject Top Nav Links and Logo if not already present
             if (!document.getElementById('topNav')) {
-                const navContainer = document.createElement('div'); // Changed to div to ensure flex works
-                navContainer.id = 'topNav';
-                navContainer.className = 'top-nav-links';
-                navContainer.innerHTML = `
-                    <a href="#" class="top-nav-item active" data-page="dashboard" onclick="app.handleTopNavClick(event, 'dashboard')">Dashboard</a>
-                    <a href="#" class="top-nav-item" data-page="documents" onclick="app.handleTopNavClick(event, 'documents')">Documents</a>
-                    <a href="#" class="top-nav-item" data-page="projects" onclick="app.handleTopNavClick(event, 'projects')">Projects</a>
-                    <a href="#" class="top-nav-item" data-page="team" onclick="app.handleTopNavClick(event, 'team')">Team</a>
-                `;
-                // Insert into header-left
                 const headerLeft = document.querySelector('.header-left');
                 if (headerLeft) {
+                    // Create Logo Container
+                    const logoContainer = document.createElement('div');
+                    logoContainer.className = 'logo header-logo';
+                    logoContainer.innerHTML = `
+                        <i class="fas fa-shield-alt"></i>
+                        <span class="logo-text">Domasy</span>
+                    `;
+                    headerLeft.prepend(logoContainer);
+
+                    const navContainer = document.createElement('div');
+                    navContainer.id = 'topNav';
+                    navContainer.className = 'top-nav-links';
+                    navContainer.innerHTML = `
+                        <a href="#" class="top-nav-item active" data-page="dashboard" onclick="app.handleTopNavClick(event, 'dashboard')">Dashboard</a>
+                        <a href="#" class="top-nav-item" data-page="documents" onclick="app.handleTopNavClick(event, 'documents')">Documents</a>
+                        <a href="#" class="top-nav-item" data-page="projects" onclick="app.handleTopNavClick(event, 'projects')">Projects</a>
+                        <a href="#" class="top-nav-item" data-page="team" onclick="app.handleTopNavClick(event, 'team')">Team</a>
+                    `;
                     headerLeft.appendChild(navContainer);
                 }
             }
+
+            // Re-trigger branding UI after injecting new logo container
+            this.updateBrandingUI();
         } else {
             // Ensure standard layout
             body.classList.remove('layout-top-nav');
             const topNav = document.getElementById('topNav');
             if (topNav) topNav.remove();
+
+            const headerLogo = document.querySelector('.header-logo');
+            if (headerLogo) headerLogo.remove();
+
+            const breadcrumb = document.getElementById('breadcrumb');
+            if (breadcrumb) breadcrumb.style.display = '';
+
             const sidebar = document.querySelector('.sidebar');
             if (sidebar) sidebar.style.display = ''; // Reset
         }

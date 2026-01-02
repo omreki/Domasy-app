@@ -226,6 +226,26 @@ img {
     justify-content: flex-start;
 }
 
+/* Header Logo (Top Nav Layout) */
+.header-logo {
+    margin-right: var(--spacing-xl);
+    padding-right: var(--spacing-xl);
+    border-right: 1px solid var(--gray-200);
+}
+
+.header-logo.logo-only {
+    width: auto;
+    justify-content: flex-start;
+}
+
+.layout-top-nav .mobile-menu-btn {
+    display: none;
+}
+
+.layout-top-nav .header-left {
+    gap: 0;
+}
+
 .sidebar-toggle {
     color: white;
     padding: var(--spacing-sm);
