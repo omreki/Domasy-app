@@ -1,16 +1,9 @@
 const multer = require('multer');
 const path = require('path');
 
-// Configure storage for local storage
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, 'uploads/');
-    },
-    filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, uniqueSuffix + path.extname(file.originalname));
-    }
-});
+// Configure storage: memoryStorage is better for cloud storage (Supabase/Firebase) 
+// and required for serverless environments like Vercel.
+const storage = multer.memoryStorage();
 
 // File filter
 const fileFilter = (req, file, cb) => {

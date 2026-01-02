@@ -13,7 +13,10 @@ class StorageService {
         if (!file) return null;
 
         try {
-            const fileContent = fs.readFileSync(file.path);
+            // Support both buffer (memoryStorage) and path (diskStorage)
+            const fileContent = file.buffer || (file.path ? fs.readFileSync(file.path) : null);
+            if (!fileContent) throw new Error('File content missing');
+
             const fileName = `${Date.now()}_${file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
             const storagePath = folder ? `${folder}/${fileName}` : fileName;
 
@@ -32,8 +35,8 @@ class StorageService {
                 .from(bucket)
                 .getPublicUrl(storagePath);
 
-            // Cleanup local file
-            if (fs.existsSync(file.path)) {
+            // Cleanup local file if it exists
+            if (file.path && fs.existsSync(file.path)) {
                 fs.unlinkSync(file.path);
             }
 
@@ -42,7 +45,7 @@ class StorageService {
             console.error(`Storage upload failed [${bucket}]:`, error);
             // Cleanup local file on error
             if (file && file.path && fs.existsSync(file.path)) {
-                fs.unlinkSync(file.path);
+                try { fs.unlinkSync(file.path); } catch (e) { }
             }
             throw error;
         }

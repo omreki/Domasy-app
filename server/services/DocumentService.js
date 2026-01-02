@@ -12,7 +12,10 @@ class DocumentService {
         if (!file) return null;
 
         try {
-            const fileContent = fs.readFileSync(file.path);
+            // Support both buffer (memoryStorage) and path (diskStorage)
+            const fileContent = file.buffer || (file.path ? fs.readFileSync(file.path) : null);
+            if (!fileContent) throw new Error('File content missing');
+
             const storagePath = `uploads/${Date.now()}_${file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
 
             // Upload to Supabase Storage
@@ -31,7 +34,7 @@ class DocumentService {
                 .getPublicUrl(storagePath);
 
             const fileData = {
-                file_name: file.filename,
+                file_name: file.filename || file.originalname,
                 file_original_name: file.originalname,
                 file_mimetype: file.mimetype,
                 file_size: file.size,
@@ -39,8 +42,10 @@ class DocumentService {
                 file_url: publicUrl
             };
 
-            // Cleanup local file
-            fs.unlinkSync(file.path);
+            // Cleanup local file if it exists
+            if (file.path && fs.existsSync(file.path)) {
+                fs.unlinkSync(file.path);
+            }
 
             return fileData;
         } catch (err) {
