@@ -72,6 +72,7 @@ class DomasApp {
                     ...this.branding,
                     ...response.data
                 };
+                localStorage.setItem('branding', JSON.stringify(this.branding));
                 this.updateBrandingUI();
             }
         } catch (error) {
@@ -2356,6 +2357,8 @@ class DomasApp {
                 this.branding.sidebarActiveBg = sidebarActiveBg;
                 this.branding.sidebarActiveIndicator = sidebarActiveIndicator;
                 this.branding.sidebarActiveTextColor = sidebarActiveTextColor;
+                // Save to local storage immediately
+                localStorage.setItem('branding', JSON.stringify(this.branding));
                 this.updateBrandingUI();
                 this.showToast('success', 'Branding Updated', 'System branding settings have been saved.');
             }

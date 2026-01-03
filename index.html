@@ -11,6 +11,29 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        (function () {
+            try {
+                const branding = JSON.parse(localStorage.getItem('branding'));
+                if (branding) {
+                    if (branding.sidebarColor) document.documentElement.style.setProperty('--sidebar-bg', branding.sidebarColor);
+                    if (branding.sidebarTextColor) document.documentElement.style.setProperty('--sidebar-text', branding.sidebarTextColor);
+                    if (branding.sidebarActiveBg) {
+                        const activeBg = branding.sidebarActiveBg.startsWith('#')
+                            ? branding.sidebarActiveBg + '26'
+                            : branding.sidebarActiveBg;
+                        document.documentElement.style.setProperty('--sidebar-active-bg', activeBg);
+                    }
+                    if (branding.sidebarActiveIndicator) document.documentElement.style.setProperty('--sidebar-active-indicator', branding.sidebarActiveIndicator);
+
+                    const activeTextColor = branding.sidebarActiveTextColor || branding.sidebarRoleColor;
+                    if (activeTextColor) document.documentElement.style.setProperty('--sidebar-active-text', activeTextColor);
+                }
+            } catch (e) {
+                // Silently fail if storage is invalid
+            }
+        })();
+    </script>
 </head>
 
 <body>
