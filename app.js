@@ -3154,58 +3154,10 @@ class DomasApp {
                                                 <div class="property-value">${doc.description || 'No description'}</div>
                                             </div>
                                             
-                                            <!-- Team Members Section (Premium Upgrade) -->
-                                            <div style="margin-top: var(--spacing-xl); padding: var(--spacing-md); background: white; border: 1px solid var(--gray-200); border-radius: var(--radius-lg); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
-                                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-lg);">
-                                                    <h3 style="font-size: var(--font-size-sm); font-weight: 700; margin: 0; color: var(--gray-800); display: flex; align-items: center; gap: 8px;">
-                                                        <i class="fas fa-users-cog" style="color: var(--primary-500);"></i>
-                                                        APPROVAL TEAM
-                                                    </h3>
-                                                    <span class="badge badge-primary" style="font-size: 10px;">${doc.teamMembers?.length || 0} Assigned</span>
-                                                </div>
-                                                
-                                                <div style="display: flex; flex-direction: column; gap: var(--spacing-sm);">
-                                                    ${doc.teamMembers && doc.teamMembers.length > 0 ? doc.teamMembers.map(m => {
-                    // Find the member's status in the workflow if available
-                    const memberStage = workflow?.stages?.find(s => {
-                        const assigneeId = typeof s.assignee === 'object' ? (s.assignee.id || s.assignee._id) : s.assignee;
-                        return String(assigneeId) === String(m.id || m._id);
-                    });
-
-                    let statusBadge = '';
-                    if (memberStage) {
-                        const s = memberStage.status;
-                        const color = s === 'completed' ? 'success' : s === 'current' ? 'info' : s === 'rejected' ? 'error' : 'gray';
-                        statusBadge = `<span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; background: var(--${color}-100); color: var(--${color}-700); font-weight: 600;">${s.toUpperCase()}</span>`;
-                    }
-
-                    return `
-                                                        <div style="display: flex; align-items: center; gap: var(--spacing-md); padding: var(--spacing-md); background: var(--gray-50); border-radius: var(--radius-md); transition: all 0.2s; border: 1px solid transparent;" onmouseover="this.style.borderColor='var(--primary-200)'; this.style.background='white'; this.style.transform='translateY(-1px)';" onmouseout="this.style.borderColor='transparent'; this.style.background='var(--gray-50)'; this.style.transform='none';">
-                                                            <div style="position: relative;">
-                                                                <img src="${m.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(m.name)}" style="width: 40px; height: 40px; border-radius: 50%; border: 2px solid white; box-shadow: var(--shadow-sm); object-fit: cover;">
-                                                                ${memberStage?.status === 'current' ? `
-                                                                    <div style="position: absolute; bottom: 0; right: 0; width: 12px; height: 12px; background: var(--info-500); border: 2px solid white; border-radius: 50%;"></div>
-                                                                ` : ''}
-                                                            </div>
-                                                            <div style="flex: 1; min-width: 0;">
-                                                                <div style="font-weight: 600; font-size: var(--font-size-sm); color: var(--gray-900); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${m.name}</div>
-                                                                <div style="font-size: var(--font-size-xs); color: var(--gray-500); display: flex; align-items: center; gap: 4px;">
-                                                                    ${m.role || 'Reviewer'}
-                                                                    ${statusBadge ? `• ${statusBadge}` : ''}
-                                                                </div>
-                                                            </div>
-                                                            <div style="font-size: 18px; color: var(--gray-300);">
-                                                                <i class="fas fa-chevron-right" style="font-size: 12px;"></i>
-                                                            </div>
-                                                        </div>
-                                                    `;
-                }).join('') : `
-                                                        <div style="text-align: center; padding: var(--spacing-xl); background: var(--gray-50); border-radius: var(--radius-md); border: 1px dashed var(--gray-300);">
-                                                            <i class="fas fa-user-slash fa-2x" style="color: var(--gray-300); margin-bottom: 8px;"></i>
-                                                            <p style="font-size: var(--font-size-sm); color: var(--gray-500); margin: 0; font-style: italic;">No specific team members assigned.</p>
-                                                        </div>
-                                                    `}
-                                                </div>
+                                            <div style="margin-top: var(--spacing-md); padding: var(--spacing-md); background: white; border-top: 1px solid var(--gray-100);">
+                                                <button class="btn btn-outline btn-full" onclick="app.switchTab(null, 'workflow')" style="font-size: var(--font-size-xs); font-weight: 600;">
+                                                    <i class="fas fa-project-diagram" style="margin-right: 8px;"></i> View Full Workflow Progress
+                                                </button>
                                             </div>
 
                                             <div style="margin-top: var(--spacing-xl);">
@@ -3612,7 +3564,7 @@ class DomasApp {
         }
 
         // Count reviewer statistics
-        const reviewerStages = workflow.stages.filter((s, i) => i > 0); // Exclude first "Draft Submission" stage
+        const reviewerStages = workflow.stages;
         const completedReviews = reviewerStages.filter(s => s.status === 'completed').length;
         const totalReviewers = reviewerStages.length;
         const currentReviewer = reviewerStages.find(s => s.status === 'current');
@@ -3700,7 +3652,7 @@ class DomasApp {
                                     <img src="${(stage.assignee && typeof stage.assignee === 'object' && stage.assignee.avatar) ? stage.assignee.avatar : `https://ui-avatars.com/api/?name=${encodeURIComponent(stage.assignee?.name || 'User')}&background=94a3b8&color=fff`}" alt="${stage.assignee?.name || 'Unassigned'}" style="width: 32px; height: 32px; border-radius: 50%; border: 2px solid white; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
                                     <div>
                                         <div style="font-weight: 600; font-size: var(--font-size-xs); color: var(--gray-700);">${stage.assignee?.name || (typeof stage.assignee === 'string' ? "Assigned (ID: " + stage.assignee.substring(0, 8) + "...)" : 'Unassigned')}</div>
-                                        <div style="font-size: 10px; color: var(--gray-500);">${stage.assignee?.role || (index === 0 ? 'Submitter' : 'Reviewer')} • ${statusText}</div>
+                                        <div style="font-size: 10px; color: var(--gray-500);">${stage.assignee?.role || 'Reviewer'} • ${statusText}</div>
                                     </div>
                                 </div>
 
