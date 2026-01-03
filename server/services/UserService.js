@@ -84,6 +84,19 @@ class UserService {
             }
         });
 
+        // Check if email is being updated
+        if (updateData.email) {
+            const { error: authError } = await supabase.auth.admin.updateUserById(id, {
+                email: updateData.email
+            });
+
+            if (authError) {
+                console.warn(`Failed to update Auth email for user ${id}:`, authError.message);
+                // Depending on requirements, we might want to throw here:
+                // throw new Error(`Auth Update Failed: ${authError.message}`);
+            }
+        }
+
         const updates = {
             ...cleanData,
             updated_at: new Date()
