@@ -144,14 +144,16 @@ exports.uploadDocument = async (req, res) => {
 
         // Parse Reviewers properly - support various formats: array, JSON string, or multiple 'reviewers[]' fields
         let reviewerIds = [];
-        const rawReviewers = reviewers || req.body['reviewers[]'] || req.body.reviewer || req.body.approver;
+        const rawReviewers = reviewers || req.body['reviewers[]'] || req.body.reviewers;
 
         if (rawReviewers) {
             if (Array.isArray(rawReviewers)) {
                 reviewerIds = rawReviewers;
             } else if (typeof rawReviewers === 'string') {
                 try {
-                    reviewerIds = JSON.parse(rawReviewers);
+                    // Try parsing as JSON array
+                    const parsed = JSON.parse(rawReviewers);
+                    reviewerIds = Array.isArray(parsed) ? parsed : [parsed];
                 } catch (e) {
                     // Split by comma if it's a comma-separated string, otherwise treat as single ID
                     if (rawReviewers.includes(',')) {
@@ -163,8 +165,8 @@ exports.uploadDocument = async (req, res) => {
             }
         }
 
-        // Final normalization: Unique array of non-empty strings
-        reviewerIds = [...new Set((Array.isArray(reviewerIds) ? reviewerIds : [reviewerIds])
+        // Final normalization: Unique array of non-empty strings, mapping objects {id} to "id"
+        reviewerIds = [...new Set(reviewerIds
             .map(id => id && typeof id === 'object' ? (id.id || id._id || id) : id)
             .map(id => (id !== null && id !== undefined) ? String(id).trim() : '')
             .filter(id => id !== '' && id !== 'undefined' && id !== 'null'))];
@@ -405,12 +407,22 @@ exports.updateDocument = async (req, res) => {
                     overallStatus: historyStages.some(s => s.status === 'rejected') ? 'Rejected' : 'In Progress'
                 });
 
-                // Update document's current approver if needed
-                if (newStages.length > 0) {
+                // Update document's current approver and status based on the new first stage
+                const nextStage = finalStages[historyStages.length];
+                if (nextStage) {
                     await DocumentService.update(req.params.id, {
-                        currentApprover: newStages[0].assignee,
+                        currentApprover: nextStage.assignee,
                         status: 'In Review'
                     });
+                } else if (historyStages.length < finalStages.length) {
+                    // Fallback if index logic is weird
+                    const currentInFinal = finalStages.find(s => s.status === 'current');
+                    if (currentInFinal) {
+                        await DocumentService.update(req.params.id, {
+                            currentApprover: currentInFinal.assignee,
+                            status: 'In Review'
+                        });
+                    }
                 }
             }
         }

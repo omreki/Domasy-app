@@ -3513,7 +3513,8 @@ class DomasApp {
                 title,
                 project,
                 category,
-                description
+                description,
+                reviewers: reviewers // CRITICAL: Include reviewers in the update
             });
 
             this.showToast('success', 'Document Updated', 'Document details and workflow updated');
@@ -3938,94 +3939,7 @@ class DomasApp {
         }
     }
 
-    async uploadDocument() {
-        const fileInput = document.getElementById('docFileInput');
-        const file = fileInput ? fileInput.files[0] : null;
-        const titleInput = document.getElementById('uploadTitle');
-        const descInput = document.getElementById('uploadDesc');
-        const catInput = document.getElementById('uploadCategory');
-        const projectSelect = document.getElementById('uploadProject');
-
-        const title = titleInput ? titleInput.value : '';
-        const description = descInput ? descInput.value : '';
-        const category = catInput ? catInput.value : 'General';
-        const projectId = projectSelect ? projectSelect.value : '';
-
-        if (!title) {
-            alert('Please enter a document title');
-            return;
-        }
-
-        if (!projectId) {
-            alert('Please select a project');
-            return;
-        }
-
-        if (!file) {
-            alert('Please select a file');
-            return;
-        }
-
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('title', title);
-        formData.append('description', description);
-        formData.append('category', category);
-        formData.append('project', projectId);
-
-        // Generate thumbnail for PDF on client-side (fallback for backend)
-        // Note: This is async, but we are inside an async function.
-        // We will try to generate it and append as 'thumbnailBase64' string or just append a second file?
-        // Simplest: If logic allows, just rely on backend? But backend failed.
-        // Let's rely on viewDocument's on-fly-renderer for viewing.
-        // For grid view, we really want a saved thumbnail. 
-
-        // Let's leave backend to try its best (we added puppeteer logic). 
-        // If puppeteer fails, we just don't have a thumbnail on grid yet.
-        // But the user's specific complaint is "Thumbnail still not showing".
-        // The previous "viewDocument" change fixes the modal view immediately.
-
-        const btn = document.querySelector('#uploadDocumentModal .btn-primary');
-        let originalText = '';
-        if (btn) {
-            originalText = btn.innerHTML;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
-            btn.disabled = true;
-        }
-
-        try {
-            await API.uploadDocument(formData);
-            this.showToast('success', 'Document Uploaded', 'Your document has been saved successfully.');
-            this.closeModal();
-
-            // Refresh content
-            if (this.currentPage === 'documents') {
-                const content = await this.renderDocuments();
-                document.getElementById('pageContent').innerHTML = content;
-                this.setupDocumentsPageListeners();
-            } else if (this.currentPage === 'dashboard') {
-                const html = await this.renderDashboard();
-                document.getElementById('pageContent').innerHTML = html;
-            } else if (this.currentPage === 'project-details') {
-                // If we know which project we are viewing, refresh it
-                // We don't easily have the current project ID here unless we store it
-                // But we can reload the page if we have a current project object
-                if (this.currentProjectViewId) {
-                    this.viewProject(this.currentProjectViewId);
-                }
-            }
-        } catch (error) {
-            console.error(error);
-            this.showToast('error', 'Upload Failed', error.message);
-        } finally {
-            if (btn) {
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-            }
-        }
-    }
-
-    // Workflow Actions
+    // Unified workflow action handlers
     async approveWorkflow(docId, workflowId) {
         const note = prompt('Add a note (optional):', 'Approved');
         if (note === null) return;
