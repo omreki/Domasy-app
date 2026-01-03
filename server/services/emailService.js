@@ -127,7 +127,7 @@ exports.sendDocumentUploadedEmail = async (recipients, document, uploader) => {
                 <p><strong>Description:</strong> ${document.description || 'N/A'}</p>
                 <p><strong>Category:</strong> ${document.category}</p>
             </div>
-            <p><a href="${process.env.CLIENT_URL || 'http://localhost:3000'}/documents/details/${document.id}" style="background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View Document</a></p>
+            <p><a href="${process.env.CLIENT_URL || 'http://localhost:3000'}/#/documents/details/${document.id}" style="background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View Document</a></p>
             <p>Best regards,<br/>Domasy Team</p>
         `;
 
@@ -160,7 +160,7 @@ exports.sendRevisionUploadedEmail = async (recipients, document, uploader, versi
             <p>Hello ${recipient.name},</p>
             <p><strong>${uploader.name}</strong> has uploaded a new version <strong>(v${version})</strong> for the document <strong>${document.title}</strong>.</p>
             <p>The review process has been reset for the new version.</p>
-            <p><a href="${process.env.CLIENT_URL || 'http://localhost:3000'}/documents/details/${document.id}" style="background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Review New Version</a></p>
+            <p><a href="${process.env.CLIENT_URL || 'http://localhost:3000'}/#/documents/details/${document.id}" style="background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Review New Version</a></p>
             <p>Best regards,<br/>Domasy Team</p>
         `;
 
@@ -186,7 +186,7 @@ exports.sendApprovalRequestEmail = async (approver, document) => {
         <h3>Your Approval is Required</h3>
         <p>Hello ${approver.name},</p>
         <p>The document <strong>${document.title}</strong> is currently at your review stage and awaits your decision.</p>
-        <p><a href="${process.env.CLIENT_URL || 'http://localhost:3000'}/documents/details/${document.id}" style="background-color: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Review Document</a></p>
+        <p><a href="${process.env.CLIENT_URL || 'http://localhost:3000'}/#/documents/details/${document.id}" style="background-color: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Review Document</a></p>
         <p>Best regards,<br/>Domasy Team</p>
     `;
 
@@ -217,7 +217,7 @@ exports.sendDocumentApprovedEmail = async (recipient, document, approver, isFina
         <p>Hello ${recipient.name},</p>
         <p>The document <strong>${document.title}</strong> has been <strong>${isFinal ? 'APPROVED' : 'approved at the current stage'}</strong> by <strong>${approver.name}</strong>.</p>
         ${isFinal ? '<p>No further actions are required.</p>' : '<p>It will proceed to the next stage.</p>'}
-        <p><a href="${process.env.CLIENT_URL || 'http://localhost:3000'}/documents/details/${document.id}" style="background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View Status</a></p>
+        <p><a href="${process.env.CLIENT_URL || 'http://localhost:3000'}/#/documents/details/${document.id}" style="background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View Status</a></p>
         <p>Best regards,<br/>Domasy Team</p>
     `;
 
@@ -248,7 +248,7 @@ exports.sendDocumentRejectedEmail = async (recipient, document, rejector, reason
             <strong>Reason:</strong> ${reason}
         </div>
         <p>Please review the feedback and upload a revision.</p>
-        <p><a href="${process.env.CLIENT_URL || 'http://localhost:3000'}/documents/details/${document.id}" style="background-color: #c62828; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View details</a></p>
+        <p><a href="${process.env.CLIENT_URL || 'http://localhost:3000'}/#/documents/details/${document.id}" style="background-color: #c62828; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View details</a></p>
         <p>Best regards,<br/>Domasy Team</p>
     `;
 
@@ -279,7 +279,7 @@ exports.sendChangesRequestedEmail = async (recipient, document, requestor, reaso
             <strong>Note:</strong> ${reason}
         </div>
         <p>Please update the document and upload a revision.</p>
-        <p><a href="${process.env.CLIENT_URL || 'http://localhost:3000'}/documents/details/${document.id}" style="background-color: #ef6c00; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View details</a></p>
+        <p><a href="${process.env.CLIENT_URL || 'http://localhost:3000'}/#/documents/details/${document.id}" style="background-color: #ef6c00; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View details</a></p>
         <p>Best regards,<br/>Domasy Team</p>
     `;
 
@@ -309,7 +309,7 @@ exports.sendDocumentUpdatedEmail = async (recipients, document, modifier) => {
             <h3>Document Details Updated</h3>
             <p>Hello ${recipient.name},</p>
             <p><strong>${modifier.name}</strong> has updated the details or reviewers for document <strong>${document.title}</strong>.</p>
-            <p><a href="${process.env.CLIENT_URL || 'http://localhost:3000'}/documents/details/${document.id}" style="background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View Document</a></p>
+            <p><a href="${process.env.CLIENT_URL || 'http://localhost:3000'}/#/documents/details/${document.id}" style="background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View Document</a></p>
             <p>Best regards,<br/>Domasy Team</p>
         `;
 
@@ -321,3 +321,34 @@ exports.sendDocumentUpdatedEmail = async (recipients, document, modifier) => {
         });
     }
 }
+
+/**
+ * Send notification when document is deleted
+ * @param {Array} recipients 
+ * @param {Object} document 
+ * @param {Object} deleter 
+ */
+exports.sendDocumentDeletedEmail = async (recipients, document, deleter) => {
+    if (!recipients || recipients.length === 0) return;
+
+    const subject = `Document Deleted: ${document.title}`;
+
+    for (const recipient of recipients) {
+        if (!recipient.email) continue;
+
+        const html = `
+            <h3>Document Deleted</h3>
+            <p>Hello ${recipient.name},</p>
+            <p><strong>${deleter.name}</strong> has deleted the document <strong>${document.title}</strong>.</p>
+            <p>This document is no longer accessible.</p>
+            <p>Best regards,<br/>Domasy Team</p>
+        `;
+
+        await exports.sendEmail({
+            to: recipient.email,
+            subject,
+            html,
+            text: `Document ${document.title} was deleted by ${deleter.name}.`
+        });
+    }
+};

@@ -38,9 +38,29 @@ class DomasApp {
             this.updateUserProfileUI();
             this.updateNavigationForRole(); // Update nav based on role
             this.updateNotificationBadge();
-            this.loadPage('dashboard');
+
+            // Load initial page (default to dashboard)
+            this.loadPage('dashboard').then(() => {
+                // Check for deep links after page load
+                this.handleDeepLinking();
+            });
+
             // Poll for notifications every 30 seconds
             setInterval(() => this.updateNotificationBadge(), 30000);
+        }
+    }
+
+    handleDeepLinking() {
+        const hash = window.location.hash;
+        if (hash && hash.startsWith('#/documents/details/')) {
+            const docId = hash.split('/').pop();
+            // Remove hash to clean up URL, or keep it? Keeping it allows refresh to work.
+            // But if we close modal, we should maybe clear it.
+            // For now, just open the document.
+            if (docId) {
+                console.log('Deep linking to document:', docId);
+                this.viewDocument(docId);
+            }
         }
     }
 
@@ -2875,21 +2895,36 @@ class DomasApp {
                                         </div>
                                     ` : ''}
 
-                                    <div style="background: white; padding: var(--spacing-xl); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); max-width: 600px; width: 100%; position: relative; z-index: 1; min-height: 400px; display: flex; align-items: center; justify-content: center;">
-                                        ${thumbnail
-                    ? `<img src="${thumbnail}" alt="${doc.title}" style="max-width: 100%; max-height: 100%; border-radius: var(--radius-md); object-fit: contain;">`
-                    : (fileMimetype === 'application/pdf'
-                        ? `<div id="pdf-preview-container" style="width: 100%; height: 100%; display: flex; justify-content: center;"><canvas id="pdf-render" style="max-width: 100%; border-radius: var(--radius-md); box-shadow: 0 0 10px rgba(0,0,0,0.1);"></canvas></div>`
-                        : `<div style="text-align:center;padding:50px;">
-                             <i class="fas fa-file-alt fa-5x" style="color:var(--gray-300)"></i>
-                             <div style="margin-top: 20px; font-weight: 600; color: var(--gray-600);">${fileOriginalName || 'Document'}</div>
-                             <br><br>
-                             <a href="${fileUrl}" target="_blank" class="btn btn-primary" style="display:inline-block;">
-                                <i class="fas fa-download"></i> Download File
-                             </a>
-                           </div>`
-                    )
-                }
+                                    <div style="background: white; padding: 0; border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); width: 100%; height:80vh; position: relative; z-index: 1; overflow: hidden; display: flex; flex-direction: column;">
+                                        ${(() => {
+                    // Ensure we have a full URL for the viewer
+                    let fullFileUrl = fileUrl;
+                    if (fullFileUrl && !fullFileUrl.startsWith('http')) {
+                        const baseUrl = window.location.origin.includes('localhost') ? 'http://localhost:5000' : window.location.origin;
+                        fullFileUrl = `${baseUrl}${fullFileUrl.startsWith('/') ? '' : '/'}${fullFileUrl}`;
+                    }
+
+                    if (fileMimetype === 'application/pdf') {
+                        return `<iframe src="${fullFileUrl}" style="width:100%; height:100%; border:none;" title="${doc.title}"></iframe>`;
+                    } else if (fileMimetype.startsWith('image/')) {
+                        return `
+                                                    <div style="width:100%; height:100%; overflow:auto; display:flex; align-items:flex-start; justify-content:center; background:#f0f2f5;">
+                                                        <img src="${fullFileUrl}" alt="${doc.title}" style="max-width:100%; height:auto; display:block; margin: 20px auto; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                                                    </div>
+                                                `;
+                    } else {
+                        // Fallback for other files
+                        return `<div style="text-align:center;padding:50px; margin: auto;">
+                                                     <i class="fas fa-file-alt fa-5x" style="color:var(--gray-300)"></i>
+                                                     <div style="margin-top: 20px; font-weight: 600; color: var(--gray-600);">${fileOriginalName || 'Document'}</div>
+                                                     <p style="color:var(--gray-500); margin: 10px 0;">This file type cannot be previewed directly.</p>
+                                                     <br>
+                                                     <a href="${fullFileUrl}" target="_blank" class="btn btn-primary" style="display:inline-block;">
+                                                        <i class="fas fa-download"></i> Download File
+                                                     </a>
+                                                   </div>`;
+                    }
+                })()}
                                     </div>
                                 </div>
 

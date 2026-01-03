@@ -489,6 +489,17 @@ exports.deleteDocument = async (req, res) => {
             });
         }
 
+        // Retrieve recipients (team members) before deletion
+        let recipients = [];
+        try {
+            const [populated] = await populateDocumentUsers([document]);
+            if (populated && populated.teamMembers) {
+                recipients = populated.teamMembers;
+            }
+        } catch (e) {
+            console.error('[Delete] Failed to load recipients:', e);
+        }
+
         await DocumentService.delete(req.params.id);
         await ApprovalWorkflowService.deleteByDocumentId(req.params.id);
 
@@ -499,6 +510,13 @@ exports.deleteDocument = async (req, res) => {
             documentTitle: document.title,
             details: `Document "${document.title}" was deleted`,
             ipAddress: req.ip
+        });
+
+        // Email Notification
+        setImmediate(async () => {
+            if (recipients.length > 0) {
+                await EmailService.sendDocumentDeletedEmail(recipients, document, req.user);
+            }
         });
 
         res.status(200).json({
