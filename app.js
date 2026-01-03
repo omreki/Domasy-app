@@ -2785,6 +2785,22 @@ class DomasApp {
                                                 <div class="property-label">DESCRIPTION</div>
                                                 <div class="property-value">${doc.description || 'No description'}</div>
                                             </div>
+                                            
+                                            <!-- Team Members Selection Show -->
+                                            <div style="margin-top: var(--spacing-xl);">
+                                                <h3 style="font-size: var(--font-size-sm); font-weight: 700; margin-bottom: var(--spacing-md); color: var(--gray-700);">APPROVAL TEAM</h3>
+                                                <div style="display: flex; flex-direction: column; gap: var(--spacing-sm);">
+                                                    ${doc.teamMembers && doc.teamMembers.length > 0 ? doc.teamMembers.map(m => `
+                                                        <div style="display: flex; align-items: center; gap: var(--spacing-md); padding: var(--spacing-sm); background: var(--gray-50); border-radius: var(--radius-md);">
+                                                            <img src="${m.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(m.name)}" style="width: 32px; height: 32px; border-radius: 50%;">
+                                                            <div style="flex: 1;">
+                                                                <div style="font-weight: 600; font-size: var(--font-size-sm);">${m.name}</div>
+                                                                <div style="font-size: var(--font-size-xs); color: var(--gray-500);">${m.role}</div>
+                                                            </div>
+                                                        </div>
+                                                    `).join('') : '<div style="font-size: var(--font-size-sm); color: var(--gray-500); font-style: italic;">No specific team members assigned.</div>'}
+                                                </div>
+                                            </div>
 
                                             <div style="margin-top: var(--spacing-xl);">
                                                 <a href="${fileUrl}" target="_blank" class="btn btn-outline" style="width: 100%; margin-bottom: var(--spacing-sm); display: flex; align-items: center; justify-content: center; gap: 8px;">

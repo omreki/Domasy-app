@@ -2,6 +2,7 @@ const ProjectService = require('../services/ProjectService');
 const DocumentService = require('../services/DocumentService');
 const AuditLogService = require('../services/AuditLogService');
 const UserService = require('../services/UserService');
+const { populateDocumentUsers } = require('../utils/population');
 
 // Helper to populate user details in projects
 const populateProjectUsers = async (projects) => {
@@ -135,12 +136,13 @@ exports.getProject = async (req, res) => {
 
         // Also get documents for this project
         const documents = await DocumentService.getByProject(req.params.id);
+        const populatedDocs = await populateDocumentUsers(documents);
 
         res.status(200).json({
             success: true,
             data: {
                 project: populatedProject,
-                documents: documents
+                documents: populatedDocs
             }
         });
     } catch (error) {

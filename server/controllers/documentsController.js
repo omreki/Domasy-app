@@ -9,111 +9,7 @@ const supabase = require('../config/supabase');
 const { generateThumbnail } = require('../utils/thumbnailGenerator');
 
 
-// Helper to populate team members from workflow
-const populateTeamMembers = async (documents) => {
-    const workflows = await Promise.all(documents.map(doc => ApprovalWorkflowService.findByDocumentId(doc.id)));
-
-    const workflowUserIds = new Set();
-    workflows.forEach(wf => {
-        if (wf && wf.stages) {
-            wf.stages.forEach(stage => {
-                if (stage.assignee) workflowUserIds.add(stage.assignee);
-            });
-        }
-    });
-
-    const teamUsersMap = {};
-    const userIdsArray = Array.from(workflowUserIds);
-
-    if (userIdsArray.length > 0) {
-        const { data: users, error } = await supabase
-            .from('users')
-            .select('id, name, email, avatar, role')
-            .in('id', userIdsArray);
-
-        if (!error && users) {
-            users.forEach(user => {
-                teamUsersMap[user.id] = user;
-            });
-        }
-    }
-
-    return documents.map((doc, index) => {
-        const wf = workflows[index];
-        let teamMembers = [];
-        if (wf && wf.stages) {
-            const uniqueIds = [...new Set(wf.stages.map(s => s.assignee).filter(id => id))];
-            teamMembers = uniqueIds.map(uid => teamUsersMap[uid]).filter(u => u);
-        }
-        return { ...doc, teamMembers };
-    });
-};
-
-// Helper to manual populate user details
-const populateUsers = async (documents) => {
-    // Collect unique user IDs
-    const userIds = new Set();
-    documents.forEach(doc => {
-        const uid = doc.uploaded_by || doc.uploadedBy;
-        const aid = doc.current_approver || doc.currentApprover;
-        if (uid) userIds.add(uid);
-        if (aid) userIds.add(aid);
-    });
-
-    const usersMap = {};
-    for (const uid of userIds) {
-        if (uid && typeof uid === 'string') {
-            const user = await UserService.findById(uid);
-            if (user) {
-                // Return safe user object
-                usersMap[uid] = {
-                    id: user.id,
-                    _id: user.id, // compatibility
-                    name: user.name,
-                    email: user.email,
-                    avatar: user.avatar,
-                    role: user.role,
-                    department: user.department
-                };
-            }
-        }
-    }
-
-    // Collect project IDs
-    const projectIds = new Set();
-    documents.forEach(doc => {
-        const pid = doc.project_id || doc.project;
-        if (pid) projectIds.add(pid);
-    });
-
-    const projectsMap = {};
-    for (const pid of projectIds) {
-        if (pid && typeof pid === 'string') {
-            const project = await ProjectService.findById(pid);
-            if (project) {
-                projectsMap[pid] = { id: project.id, _id: project.id, name: project.name };
-            }
-        }
-    }
-
-    // Attach objects
-    const populated = documents.map(doc => {
-        const d = { ...doc, _id: doc.id };
-
-        // Normalize fields
-        const uid = doc.uploaded_by || doc.uploadedBy;
-        const aid = doc.current_approver || doc.currentApprover;
-        const pid = doc.project_id || doc.project;
-
-        if (uid && usersMap[uid]) d.uploadedBy = usersMap[uid];
-        if (aid && usersMap[aid]) d.currentApprover = usersMap[aid];
-        if (pid && projectsMap[pid]) d.project = projectsMap[pid];
-
-        return d;
-    });
-
-    return await populateTeamMembers(populated);
-};
+const { populateDocumentUsers } = require('../utils/population');
 
 // @desc    Get all documents
 // @route   GET /api/documents
@@ -144,15 +40,16 @@ exports.getDocuments = async (req, res) => {
 
         // Apply In-Memory Role Filtering if needed
         let filteredDocs = documents;
-        if (req.user.role === 'Viewer') {
-            filteredDocs = documents.filter(d => d.status === 'Approved' || d.uploadedBy === req.user.id);
-        } else if (req.user.role === 'Editor') {
-            filteredDocs = documents.filter(d => d.status === 'Approved' || d.uploadedBy === req.user.id);
+        if (req.user.role === 'Viewer' || req.user.role === 'Editor') {
+            filteredDocs = documents.filter(d => {
+                const isApproved = d.status === 'Approved';
+                const isUploader = (d.uploaded_by && d.uploaded_by.toString() === req.user.id.toString()) ||
+                    (d.uploadedBy && d.uploadedBy.toString() === req.user.id.toString());
+                return isApproved || isUploader;
+            });
         }
 
-        const populatedDocs = await populateUsers(filteredDocs);
-
-        const finalDocs = await populateUsers(filteredDocs);
+        const finalDocs = await populateDocumentUsers(filteredDocs);
 
         res.status(200).json({
             success: true,
@@ -185,7 +82,7 @@ exports.getDocument = async (req, res) => {
         }
 
         // Manual populate
-        const [populatedDoc] = await populateUsers([document]);
+        const [populatedDoc] = await populateDocumentUsers([document]);
 
         if (populatedDoc.uploadedBy && typeof populatedDoc.uploadedBy === 'string') {
             // If manual populate failed / wasn't objectified yet for some reason
@@ -332,14 +229,15 @@ exports.uploadDocument = async (req, res) => {
             ipAddress: req.ip
         });
 
-        const [populatedDoc] = await populateUsers([document]);
-        const teamMembers = populatedDoc.teamMembers || [];
+        const [populatedDoc] = await populateDocumentUsers([document]);
+
+        console.log(`[Documents] Document ${document.id} uploaded. Team members populated: ${populatedDoc.teamMembers?.length || 0}`);
 
         res.status(201).json({
             success: true,
             message: 'Document uploaded successfully',
             data: {
-                document: { ...populatedDoc, teamMembers }
+                document: populatedDoc
             }
         });
     } catch (error) {
@@ -447,12 +345,12 @@ exports.updateDocument = async (req, res) => {
         });
 
         // Populate basic helper
-        const [params] = await populateUsers([updatedDoc]);
+        const [populatedDoc] = await populateDocumentUsers([updatedDoc]);
 
         res.status(200).json({
             success: true,
             message: 'Document updated successfully',
-            data: { document: params }
+            data: { document: populatedDoc }
         });
     } catch (error) {
         res.status(500).json({
@@ -556,7 +454,7 @@ exports.downloadDocument = async (req, res) => {
 exports.getMyDocuments = async (req, res) => {
     try {
         const documents = await DocumentService.getAll({ uploadedBy: req.user.id });
-        const populated = await populateUsers(documents);
+        const populated = await populateDocumentUsers(documents);
 
         res.status(200).json({
             success: true,
@@ -585,7 +483,7 @@ exports.getPendingApprovals = async (req, res) => {
         });
 
         // Filter further if needed
-        const populated = await populateUsers(documents);
+        const populated = await populateDocumentUsers(documents);
 
         res.status(200).json({
             success: true,
