@@ -738,6 +738,7 @@ class DomasApp {
 
     renderDocumentListItem(doc) {
         const uploader = doc.uploadedBy;
+        const teamMembers = doc.teamMembers || [];
         const statusColors = {
             'Approved': 'success',
             'In Review': 'info',
@@ -756,18 +757,35 @@ class DomasApp {
         const dateStr = createdAt ? new Date(createdAt).toLocaleDateString() : 'Unknown';
         const fileSize = (rawFileSize / 1024 / 1024).toFixed(2) + ' MB';
 
+        // Team Avatars stack
+        const teamStack = teamMembers.length > 0 ? `
+            <div class="avatar-stack" style="margin-left: var(--spacing-md); display: flex; align-items:center;">
+                ${teamMembers.slice(0, 3).map(m => `
+                    <div title="${m.name}" style="margin-left: -8px; border: 2px solid white; border-radius: 50%; overflow: hidden; width: 24px; height: 24px;">
+                         <img src="${m.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(m.name)}" 
+                              style="width:100%; height:100%; object-fit:cover;" 
+                              alt="${m.name}">
+                    </div>
+                `).join('')}
+                ${teamMembers.length > 3 ? `<span style="font-size: 10px; color: var(--gray-500); margin-left: 4px;">+${teamMembers.length - 3}</span>` : ''}
+            </div>
+        ` : '';
+
         return `
-            <div class="document-list-item" onclick="app.viewDocument('${doc._id || doc.id}')">
-                <div class="document-icon">
+            <div class="document-list-item" onclick="app.viewDocument('${doc._id || doc.id}')" style="display: flex; align-items: center; padding: var(--spacing-md); border-bottom: 1px solid var(--gray-100);">
+                <div class="document-icon" style="margin-right: var(--spacing-md); width: 40px; height: 40px; background: var(--gray-50); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--primary-500);">
                     <i class="fas fa-file-alt"></i>
                 </div>
-                <div class="document-info">
-                    <div class="document-title">${doc.title}</div>
-                    <div class="document-meta">
+                <div class="document-info" style="flex: 1;">
+                    <div class="document-title" style="font-weight: 600; font-size: 14px; color: var(--gray-900);">${doc.title}</div>
+                    <div class="document-meta" style="font-size: 12px; color: var(--gray-500);">
                         ${uploader ? (uploader.name || 'User') : 'System'} • ${dateStr} • ${fileSize}
                     </div>
                 </div>
-                <span class="badge badge-${statusColors[doc.status.replace(' ', '')] || 'gray'}">${doc.status}</span>
+                ${teamStack}
+                <div style="margin-left: var(--spacing-md);">
+                    <span class="badge badge-${statusColors[doc.status.replace(' ', '')] || 'gray'}">${doc.status}</span>
+                </div>
             </div>
         `;
     }

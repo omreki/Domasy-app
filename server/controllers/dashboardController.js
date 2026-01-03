@@ -3,6 +3,7 @@ const ProjectService = require('../services/ProjectService');
 const UserService = require('../services/UserService');
 const AuditLogService = require('../services/AuditLogService');
 const ApprovalWorkflowService = require('../services/ApprovalWorkflowService');
+const { populateDocumentUsers } = require('../utils/population');
 
 // @desc    Get dashboard statistics
 // @route   GET /api/dashboard/stats
@@ -40,22 +41,8 @@ exports.getDashboardStats = async (req, res) => {
             console.error('[Dashboard] Approvals fetch failed:', e.message);
         }
 
-        // Manually Populate Recent Documents User
-        const populatedRecentDocuments = await Promise.all(recentDocuments.map(async doc => {
-            let user = { name: 'Unknown' };
-            try {
-                if (doc.uploaded_by) {
-                    const uid = typeof doc.uploaded_by === 'object' ? doc.uploaded_by.id : doc.uploaded_by;
-                    if (uid) {
-                        const u = await UserService.findById(uid);
-                        if (u) user = { name: u.name, avatar: u.avatar };
-                    }
-                }
-            } catch (e) {
-                console.error(`[Dashboard] Failed to populate user for doc ${doc.id}:`, e.message);
-            }
-            return { ...doc, _id: doc.id, uploadedBy: user };
-        }));
+        // Populate Recent Documents with User and Team info
+        const populatedRecentDocuments = await populateDocumentUsers(recentDocuments);
 
         // Manually Populate Recent Activity User
         const populatedRecentActivity = await Promise.all(recentActivity.map(async logItem => {
