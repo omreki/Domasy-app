@@ -3,6 +3,7 @@ const ApprovalWorkflowService = require('../services/ApprovalWorkflowService');
 const AuditLogService = require('../services/AuditLogService');
 const UserService = require('../services/UserService');
 const ProjectService = require('../services/ProjectService');
+const EmailService = require('../services/emailService');
 const path = require('path');
 const fs = require('fs');
 const supabase = require('../config/supabase');
@@ -269,6 +270,45 @@ exports.uploadDocument = async (req, res) => {
             }
         }
 
+        // --- EMAIL NOTIFICATIONS for UPLOAD ---
+        setImmediate(async () => {
+            try {
+                // 1. Fetch full user objects for reviewers if we only have IDs so far
+                // populatedDoc.teamMembers might handle it, but let's be safe
+                let recipients = [];
+                if (reviewerIds.length > 0) {
+                    // We can try to reuse populatedDoc.teamMembers if available
+                    if (populatedDoc && populatedDoc.teamMembers) {
+                        recipients = populatedDoc.teamMembers;
+                    } else {
+                        // Fetch manual
+                        const { data } = await supabase.from('users').select('*').in('id', reviewerIds);
+                        recipients = data || [];
+                    }
+                }
+
+                // 2. Notify all tagged team members that they are part of this document
+                if (recipients.length > 0) {
+                    await EmailService.sendDocumentUploadedEmail(recipients, document, req.user);
+                }
+
+                // 3. Notify the specific Current Approver that action is needed
+                // The first reviewer is the current approver
+                if (reviewerIds.length > 0) {
+                    const firstReviewerId = reviewerIds[0];
+                    const firstReviewer = recipients.find(r => r.id === firstReviewerId || r._id === firstReviewerId)
+                        || await UserService.findById(firstReviewerId);
+
+                    if (firstReviewer) {
+                        await EmailService.sendApprovalRequestEmail(firstReviewer, document);
+                    }
+                }
+            } catch (emailErr) {
+                console.error('[Upload] Email notification failed:', emailErr);
+            }
+        });
+        // --------------------------------------
+
         console.log(`[Documents] Document ${document.id} upload complete. Team: ${populatedDoc.teamMembers?.length || 0}`);
 
         res.status(201).json({
@@ -384,6 +424,33 @@ exports.updateDocument = async (req, res) => {
             details: 'Document details and reviewers updated',
             ipAddress: req.ip
         });
+
+        // --- EMAIL NOTIFICATION for UPDATE ---
+        setImmediate(async () => {
+            try {
+                // Determine recipients: all reviewers in the workflow
+                // We'll fetch the latest workflow again to be sure
+                const wf = await ApprovalWorkflowService.findByDocumentId(req.params.id);
+                if (wf && wf.stages) {
+                    const assigneeIds = wf.stages
+                        .map(s => typeof s.assignee === 'object' ? s.assignee.id : s.assignee)
+                        .filter(id => id && id !== req.user.id);
+
+                    if (assigneeIds.length > 0) {
+                        // Unique IDs
+                        const uniqueIds = [...new Set(assigneeIds)];
+                        const { data: recipients } = await supabase.from('users').select('*').in('id', uniqueIds);
+
+                        if (recipients && recipients.length > 0) {
+                            await EmailService.sendDocumentUpdatedEmail(recipients, updatedDoc, req.user);
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error('[Update] Email notification error:', err);
+            }
+        });
+        // -------------------------------------
 
         // Populate basic helper
         const [populatedDoc] = await populateDocumentUsers([updatedDoc]);
@@ -666,6 +733,46 @@ exports.uploadRevision = async (req, res) => {
             details: `Uploaded revision v${newVersion}`,
             ipAddress: req.ip
         });
+
+        // --- EMAIL NOTIFICATION for REVISION ---
+        setImmediate(async () => {
+            try {
+                // Notify all workflow participants about new revision
+                const { stages } = await ApprovalWorkflowService.findByDocumentId(req.params.id);
+                if (stages) {
+                    const assigneeIds = stages
+                        .map(s => typeof s.assignee === 'object' ? s.assignee.id : s.assignee)
+                        .filter(id => id && id !== req.user.id); // Exclude uploader (self) if in list
+
+                    const uniqueIds = [...new Set(assigneeIds)];
+
+                    if (uniqueIds.length > 0) {
+                        const { data: recipients } = await supabase.from('users').select('*').in('id', uniqueIds);
+                        if (recipients) {
+                            await EmailService.sendRevisionUploadedEmail(recipients, updatedDoc, req.user, newVersion);
+                        }
+
+                        // Also notify the *current* approver specifically for Action
+                        // We recalculated currentStageIndex logic above.
+                        // Let's grab the current stage assignee from our local logic or simple re-fetch
+                        // The logic said: find first 'pending' stage
+
+                        // We can find the current approver from updatedDoc.currentApprover
+                        if (updatedDoc.currentApprover) {
+                            const approverId = typeof updatedDoc.currentApprover === 'object' ? updatedDoc.currentApprover.id : updatedDoc.currentApprover;
+                            const currentApproverUser = recipients.find(u => u.id === approverId) || await UserService.findById(approverId);
+
+                            if (currentApproverUser) {
+                                await EmailService.sendApprovalRequestEmail(currentApproverUser, updatedDoc);
+                            }
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error('[Revision] Email notification error:', err);
+            }
+        });
+        // ---------------------------------------
 
         res.status(200).json({
             success: true,

@@ -3,6 +3,7 @@ const DocumentService = require('../services/DocumentService');
 const AuditLogService = require('../services/AuditLogService');
 const UserService = require('../services/UserService');
 const NotificationService = require('../services/notificationService');
+const EmailService = require('../services/emailService');
 
 // Helper to populate workflow assignees
 const populateWorkflowAssignees = async (workflow) => {
@@ -175,17 +176,34 @@ exports.approveStage = async (req, res) => {
             });
 
             // Notifications
+            // Notifications & Emails
             if (currentApprover) {
                 // Notify next approver
                 const approverId = typeof currentApprover === 'object' ? (currentApprover.id || currentApprover._id) : currentApprover;
+                const approverUser = await UserService.findById(approverId);
+
                 await NotificationService.createNotification(approverId, {
                     title: 'Document Pending Review',
                     message: `You have a new document "${document.title}" awaiting your approval.`,
                     type: 'info',
                     link: `document:${document.id}`
                 });
+
+                if (approverUser) {
+                    await EmailService.sendApprovalRequestEmail(approverUser, document);
+                }
+
+                // Notify uploader of Stage Approval
+                const uploaderId = typeof document.uploaded_by === 'object' ? (document.uploaded_by.id || document.uploaded_by._id) : (document.uploaded_by || document.uploadedBy);
+                if (uploaderId) {
+                    const uploader = await UserService.findById(uploaderId);
+                    if (uploader) {
+                        await EmailService.sendDocumentApprovedEmail(uploader, document, req.user, false);
+                    }
+                }
+
             } else if (docStatus === 'Approved') {
-                // Notify uploader
+                // Notify uploader of Final Approval
                 const uploaderId = typeof document.uploaded_by === 'object' ? (document.uploaded_by.id || document.uploaded_by._id) : (document.uploaded_by || document.uploadedBy);
                 if (uploaderId) {
                     await NotificationService.createNotification(uploaderId, {
@@ -194,6 +212,11 @@ exports.approveStage = async (req, res) => {
                         type: 'success',
                         link: `document:${document.id}`
                     });
+                    // Email
+                    const uploader = await UserService.findById(uploaderId);
+                    if (uploader) {
+                        await EmailService.sendDocumentApprovedEmail(uploader, document, req.user, true);
+                    }
                 }
             }
         }
@@ -290,6 +313,12 @@ exports.rejectStage = async (req, res) => {
                     type: 'error',
                     link: `document:${document.id}`
                 });
+
+                // Email
+                const uploader = await UserService.findById(uploaderId);
+                if (uploader) {
+                    await EmailService.sendDocumentRejectedEmail(uploader, document, req.user, note);
+                }
             }
         }
 
@@ -379,6 +408,12 @@ exports.requestChanges = async (req, res) => {
                     type: 'warning',
                     link: `document:${document.id}`
                 });
+
+                // Email
+                const uploader = await UserService.findById(uploaderId);
+                if (uploader) {
+                    await EmailService.sendChangesRequestedEmail(uploader, document, req.user, note);
+                }
             }
         }
 

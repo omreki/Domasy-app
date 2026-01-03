@@ -18,9 +18,16 @@ exports.getSettings = async (req, res) => {
 
         if (error && error.code !== 'PGRST116') throw error;
 
+        let settings = data ? data.settings : {};
+
+        // Security: Mask SMTP password if fetching email config
+        if (id === 'email_config' && settings.smtpPass) {
+            settings.smtpPass = '********';
+        }
+
         res.status(200).json({
             success: true,
-            data: data ? data.settings : {}
+            data: settings
         });
     } catch (error) {
         res.status(500).json({
@@ -36,13 +43,23 @@ exports.getSettings = async (req, res) => {
 exports.updateSettings = async (req, res) => {
     try {
         const { id } = req.params;
-        const settings = req.body;
+        let settings = req.body;
 
         const { data: existing } = await supabase
             .from(TABLE)
             .select('*')
             .eq('id', id)
             .single();
+
+        // Special handling for email config to preserve password if not changed
+        if (id === 'email_config') {
+            const existingSettings = existing ? existing.settings : {};
+
+            // If password is masked/empty, keep the old one
+            if (settings.smtpPass === '********' || !settings.smtpPass) {
+                settings.smtpPass = existingSettings.smtpPass;
+            }
+        }
 
         let result;
         if (existing) {
@@ -74,9 +91,15 @@ exports.updateSettings = async (req, res) => {
             ipAddress: req.ip
         });
 
+        // Retur n settings to user (mask password again)
+        const returnedSettings = result.settings;
+        if (id === 'email_config' && returnedSettings.smtpPass) {
+            returnedSettings.smtpPass = '********';
+        }
+
         res.status(200).json({
             success: true,
-            data: result.settings
+            data: returnedSettings
         });
     } catch (error) {
         res.status(500).json({

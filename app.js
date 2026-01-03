@@ -1889,6 +1889,11 @@ class DomasApp {
                             <button class="settings-nav-item" onclick="app.switchSettingsTab('categories')">
                                 <i class="fas fa-tags"></i> Project Categories
                             </button>
+                            ${user.role === 'Super Admin' ? `
+                            <button class="settings-nav-item" onclick="app.switchSettingsTab('email')">
+                                <i class="fas fa-envelope"></i> Email Config
+                            </button>
+                            ` : ''}
                         </div>
                     </div>
 
@@ -2084,6 +2089,66 @@ class DomasApp {
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Email Settings (Admin Only) -->
+                        <div id="settings-email" class="card" style="display: none;">
+                            <div class="card-header">
+                                <h2 class="card-title">Email Configuration</h2>
+                                <p class="card-subtitle">Configure SMTP settings for system notifications.</p>
+                            </div>
+                            <div class="card-body">
+                                <form onsubmit="app.saveEmailSettings(event)">
+                                    <div class="grid-2">
+                                        <div class="form-group">
+                                            <label class="form-label">SMTP Host</label>
+                                            <input type="text" class="form-input" id="smtpHost" placeholder="smtp.gmail.com">
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label">SMTP Port</label>
+                                            <input type="number" class="form-input" id="smtpPort" placeholder="587">
+                                        </div>
+                                    </div>
+
+                                    <div class="grid-2">
+                                        <div class="form-group">
+                                            <label class="form-label">SMTP Username</label>
+                                            <input type="text" class="form-input" id="smtpUser" placeholder="email@example.com">
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label">SMTP Password</label>
+                                            <input type="password" class="form-input" id="smtpPass" placeholder="********">
+                                            <small style="color: var(--gray-500);">Leave blank to keep existing password.</small>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group" style="margin-top: 15px;">
+                                        <label class="checkbox-label" style="display:flex; align-items:center; gap:10px; cursor:pointer;">
+                                            <input type="checkbox" id="smtpSecure"> 
+                                            <span>Use Secure Connection (SSL/TLS - usually port 465)</span>
+                                        </label>
+                                    </div>
+
+                                    <hr style="margin: 20px 0; border: 0; border-top: 1px solid var(--gray-200);">
+                                    
+                                    <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 15px;">Sender Details</h3>
+                                    
+                                    <div class="grid-2">
+                                        <div class="form-group">
+                                            <label class="form-label">Sender Name</label>
+                                            <input type="text" class="form-input" id="senderName" placeholder="Domasy System">
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label">Sender Email</label>
+                                            <input type="email" class="form-input" id="senderEmail" placeholder="noreply@domasy.com">
+                                        </div>
+                                    </div>
+
+                                    <div style="margin-top: var(--spacing-lg); text-align: right;">
+                                        <button type="submit" class="btn btn-primary">Save Email Settings</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -2096,13 +2161,15 @@ class DomasApp {
         event.target.closest('.settings-nav-item').classList.add('active');
 
         // Update Content
-        ['profile', 'security', 'notifications', 'categories', 'branding'].forEach(tab => {
+        ['profile', 'security', 'notifications', 'categories', 'branding', 'email'].forEach(tab => {
             const el = document.getElementById(`settings-${tab}`);
             if (el) el.style.display = tab === tabName ? 'block' : 'none';
         });
 
         if (tabName === 'categories') {
             this.loadSettingsCategories();
+        } else if (tabName === 'email') {
+            this.loadEmailSettings();
         }
     }
 
@@ -2224,6 +2291,59 @@ class DomasApp {
         } catch (error) {
             console.error('Logo upload failed:', error);
             this.showToast('error', 'Upload Failed', error.message || 'Could not upload logo');
+        } finally {
+            this.hideLoader();
+        }
+    }
+
+    async loadEmailSettings() {
+        this.showLoader();
+        try {
+            const response = await API.getSettings('email_config');
+            if (response.success) {
+                const settings = response.data || {};
+                const safeVal = (val) => (val === undefined || val === null) ? '' : val;
+
+                if (document.getElementById('smtpHost')) document.getElementById('smtpHost').value = safeVal(settings.smtpHost);
+                if (document.getElementById('smtpPort')) document.getElementById('smtpPort').value = safeVal(settings.smtpPort);
+                if (document.getElementById('smtpUser')) document.getElementById('smtpUser').value = safeVal(settings.smtpUser);
+                if (document.getElementById('smtpPass')) document.getElementById('smtpPass').value = safeVal(settings.smtpPass); // Will likely be '********'
+                if (document.getElementById('smtpSecure')) document.getElementById('smtpSecure').checked = !!settings.smtpSecure;
+                if (document.getElementById('senderName')) document.getElementById('senderName').value = safeVal(settings.senderName);
+                if (document.getElementById('senderEmail')) document.getElementById('senderEmail').value = safeVal(settings.senderEmail);
+            }
+        } catch (error) {
+            console.error('Load email settings failed:', error);
+            this.showToast('error', 'Error', 'Could not load email settings');
+        } finally {
+            this.hideLoader();
+        }
+    }
+
+    async saveEmailSettings(e) {
+        e.preventDefault();
+
+        const settings = {
+            smtpHost: document.getElementById('smtpHost').value,
+            smtpPort: parseInt(document.getElementById('smtpPort').value),
+            smtpUser: document.getElementById('smtpUser').value,
+            smtpPass: document.getElementById('smtpPass').value,
+            smtpSecure: document.getElementById('smtpSecure').checked,
+            senderName: document.getElementById('senderName').value,
+            senderEmail: document.getElementById('senderEmail').value
+        };
+
+        this.showLoader();
+        try {
+            const response = await API.updateSettings('email_config', settings);
+            if (response.success) {
+                this.showToast('success', 'Email Settings Saved', 'SMTP configuration has been updated.');
+                // Reload to refresh the masked password logic etc
+                this.loadEmailSettings();
+            }
+        } catch (error) {
+            console.error('Save email settings failed:', error);
+            this.showToast('error', 'Save Failed', error.message || 'Could not save settings');
         } finally {
             this.hideLoader();
         }
