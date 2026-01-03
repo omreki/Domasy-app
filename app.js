@@ -2704,7 +2704,7 @@ class DomasApp {
                             Next Step <i class="fas fa-arrow-right"></i>
                         </button>
                         <button class="btn btn-primary" id="uploadSubmitBtn" onclick="app.uploadDocument()" style="display:none;">
-                            <i class="fas fa-upload"></i> Complete Upload
+                            <i class="fas fa-upload"></i> Upload and Notify
                         </button>
                     </div>
                 </div>
@@ -2906,6 +2906,11 @@ class DomasApp {
             }
             if (this.currentPage === 'project-details') {
                 this.viewProject(this.currentProjectViewId);
+            }
+
+            // Open the document details modal automatically
+            if (result.data && result.data.document && result.data.document.id) {
+                this.viewDocument(result.data.document.id);
             }
         } catch (error) {
             console.error(error);

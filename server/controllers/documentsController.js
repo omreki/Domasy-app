@@ -290,6 +290,11 @@ exports.uploadDocument = async (req, res) => {
                     teamUsers.forEach(u => userMap[u.id] = { ...u, _id: u.id });
                     populatedDoc.teamMembers = reviewerIds.map(id => userMap[id]).filter(u => u);
                     console.log(`[Upload] Attached ${populatedDoc.teamMembers.length} team members to response`);
+
+                    // Send notifications explicitly to these mapped users
+                    if (populatedDoc.teamMembers.length > 0) {
+                        EmailService.sendDocumentUploadedEmail(populatedDoc.teamMembers, populatedDoc, req.user);
+                    }
                 }
             } catch (popErr) {
                 console.error('[Upload] Manual population failed:', popErr);
