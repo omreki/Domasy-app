@@ -3240,8 +3240,6 @@ class DomasApp {
 
                                         <!-- History Tab -->
                                         <div id="historyTab" class="tab-content" style="padding: var(--spacing-lg); display: none;">
-                                            <h3 style="font-size: var(--font-size-base); font-weight: 700; margin-bottom: var(--spacing-md);">Version History</h3>
-                                            
                                             <div class="table-container">
                                                 <table class="data-table" style="width: 100%;">
                                                     <thead>
