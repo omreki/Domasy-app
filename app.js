@@ -3242,10 +3242,10 @@ class DomasApp {
                                                 <table class="data-table" style="width: 100%;">
                                                     <thead>
                                                         <tr>
-                                                            <th style="padding: 8px; text-align: left;">Version</th>
-                                                            <th style="padding: 8px; text-align: left;">Date</th>
-                                                            <th style="padding: 8px; text-align: left;">File Name</th>
-                                                            <th style="padding: 8px; text-align: left;">Action</th>
+                                                            <th style="padding: var(--spacing-md); text-align: left; font-weight: 600; color: var(--gray-600); font-size: 12px; border-bottom: 1px solid var(--gray-200);">Version</th>
+                                                            <th style="padding: var(--spacing-md); text-align: left; font-weight: 600; color: var(--gray-600); font-size: 12px; border-bottom: 1px solid var(--gray-200);">Date</th>
+                                                            <th style="padding: var(--spacing-md); text-align: left; font-weight: 600; color: var(--gray-600); font-size: 12px; border-bottom: 1px solid var(--gray-200);">File Name</th>
+                                                            <th style="padding: var(--spacing-md); text-align: left; font-weight: 600; color: var(--gray-600); font-size: 12px; border-bottom: 1px solid var(--gray-200);">Action</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody>
