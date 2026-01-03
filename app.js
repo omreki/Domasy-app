@@ -3391,26 +3391,6 @@ class DomasApp {
                                     <textarea class="form-textarea" id="editDocDescription" rows="3">${doc.description || ''}</textarea>
                                 </div>
 
-                                <!-- Team / Reviewers Section -->
-                                <div class="form-group">
-                                    <label class="form-label">Manage Approval Team</label>
-                                    <p style="font-size: var(--font-size-xs); color: var(--gray-500); margin-bottom: var(--spacing-sm);">
-                                        Add or remove team members for the approval workflow.
-                                    </p>
-                                    <div style="max-height: 200px; overflow-y: auto; border: 1px solid var(--gray-200); border-radius: var(--radius-md); padding: var(--spacing-sm); background: var(--gray-50);">
-                                        ${users.length > 0 ? users.map(user => `
-                                            <label style="display: flex; align-items: center; padding: var(--spacing-xs); cursor: pointer; border-radius: var(--radius-sm); transition: background 0.2s;" onmouseover="this.style.background='var(--gray-100)'" onmouseout="this.style.background='transparent'">
-                                                <input type="checkbox" class="edit-reviewer-checkbox" value="${user.id || user._id}" ${currentReviewerIds.has(String(user.id || user._id)) ? 'checked' : ''} style="margin-right: var(--spacing-sm);">
-                                                <img src="${user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=4F46E5&color=fff`}" style="width: 24px; height: 24px; border-radius: 50%; margin-right: var(--spacing-sm);">
-                                                <div style="flex: 1;">
-                                                    <div style="font-weight: 500; font-size: var(--font-size-sm);">${user.name}</div>
-                                                    <div style="font-size: var(--font-size-xs); color: var(--gray-500);">${user.role}</div>
-                                                </div>
-                                            </label>
-                                        `).join('') : '<div style="padding:10px; text-align:center; color:gray;">No eligible users found</div>'}
-                                    </div>
-                                </div>
-
                                 <div style="display: flex; justify-content: flex-end; gap: var(--spacing-sm); margin-top: var(--spacing-xl);">
                                     <button type="button" class="btn btn-outline" onclick="app.closeModal()">Cancel</button>
                                     <button type="submit" class="btn btn-primary">Save Changes</button>
@@ -3433,10 +3413,6 @@ class DomasApp {
         const category = document.getElementById('editDocCategory').value;
         const description = document.getElementById('editDocDescription').value;
 
-        // Collect reviewers
-        const reviewerCheckboxes = document.querySelectorAll('.edit-reviewer-checkbox:checked');
-        const reviewers = Array.from(reviewerCheckboxes).map(cb => cb.value);
-
         if (!title) {
             this.showToast('error', 'Missing Title', 'Please enter a document title');
             return;
@@ -3452,8 +3428,7 @@ class DomasApp {
                 title,
                 project,
                 category,
-                description,
-                reviewers: JSON.stringify(reviewers) // Send as JSON string
+                description
             });
 
             this.showToast('success', 'Document Updated', 'Document details and workflow updated');
