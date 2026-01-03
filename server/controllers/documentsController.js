@@ -216,7 +216,18 @@ exports.uploadDocument = async (req, res) => {
         console.log('[Upload] Document record created:', document.id);
 
         // --- Workflow Creation (Harmonized) ---
-        const workflowStages = [];
+        const workflowStages = [
+            {
+                name: 'Draft Submission',
+                assignee: req.user.id,
+                department: req.user.department || 'Submitter',
+                status: 'completed',
+                action: 'Approved',
+                note: `${req.user.name} submitted document`,
+                actionDate: new Date(),
+                order: 1
+            }
+        ];
 
         // Fetch all reviewers at once to ensure we have their data
         let reviewersData = [];
@@ -232,25 +243,29 @@ exports.uploadDocument = async (req, res) => {
         const reviewersMap = {};
         reviewersData.forEach(u => reviewersMap[String(u.id).toLowerCase()] = u);
 
-        // Add reviewer stages
+        // Add reviewer stages (Filtering out any that couldn't be found/assigned)
         if (reviewerIds.length > 0) {
+            let reviewerOrder = 2;
             for (let i = 0; i < reviewerIds.length; i++) {
                 const rid = reviewerIds[i];
+                if (!rid) continue; // Skip unassigned
+
                 const revUser = reviewersMap[String(rid).toLowerCase()];
                 workflowStages.push({
-                    name: revUser ? `${revUser.name} Review` : `Review Stage ${i + 1}`,
+                    name: revUser ? `${revUser.name} Review` : `Review Stage ${reviewerOrder - 1}`,
                     assignee: rid,
                     department: revUser?.department || 'Review',
-                    status: i === 0 ? 'current' : 'pending',
-                    order: i + 1
+                    status: (reviewerOrder === 2) ? 'current' : 'pending',
+                    order: reviewerOrder
                 });
+                reviewerOrder++;
             }
         }
 
         const workflow = await ApprovalWorkflowService.create({
             document_id: document.id,
             stages: workflowStages,
-            currentStageIndex: 0,
+            currentStageIndex: workflowStages.length > 1 ? 1 : 0,
             overallStatus: 'In Progress'
         });
         console.log('[Upload] Workflow object successfully created:', workflow.id);
@@ -418,24 +433,38 @@ exports.updateDocument = async (req, res) => {
             } else {
                 // Self-healing: Create missing workflow
                 console.log('[Update] No workflow found, creating new one...');
-                const workflowStages = [];
+                const workflowStages = [
+                    {
+                        name: 'Draft Submission',
+                        assignee: req.user.id,
+                        department: req.user.department || 'Submitter',
+                        status: 'completed',
+                        action: 'Approved',
+                        actionDate: new Date(),
+                        order: 1
+                    }
+                ];
 
+                let reviewerOrder = 2;
                 for (let i = 0; i < newReviewerIds.length; i++) {
                     const rId = newReviewerIds[i];
+                    if (!rId) continue;
+
                     const user = await UserService.findById(rId);
                     workflowStages.push({
-                        name: user ? `${user.name} Review` : `Review Stage ${i + 1}`,
+                        name: user ? `${user.name} Review` : `Review Stage ${reviewerOrder - 1}`,
                         assignee: rId,
                         department: user?.department || 'Review',
-                        status: i === 0 ? 'current' : 'pending',
-                        order: i + 1
+                        status: (reviewerOrder === 2) ? 'current' : 'pending',
+                        order: reviewerOrder
                     });
+                    reviewerOrder++;
                 }
 
                 await ApprovalWorkflowService.create({
                     document_id: req.params.id,
                     stages: workflowStages,
-                    currentStageIndex: 0,
+                    currentStageIndex: workflowStages.length > 1 ? 1 : 0,
                     overallStatus: 'In Progress'
                 });
 
