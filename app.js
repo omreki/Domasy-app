@@ -194,8 +194,11 @@ class DomasApp {
         loginDiv.innerHTML = `
             <div class="card" style="width: 100%; max-width: 400px; padding: var(--spacing-xl); box-shadow: var(--shadow-xl); border: 1px solid var(--gray-200);">
                 <div style="text-align: center; margin-bottom: var(--spacing-xl);">
-                    <div style="color: var(--primary-600); font-size: 36px; margin-bottom: var(--spacing-md);">
-                        <i class="fas fa-shield-alt"></i>
+                    <div style="color: var(--primary-600); font-size: 36px; margin-bottom: var(--spacing-md); display: flex; justify-content: center;">
+                        ${this.branding.logo ?
+                `<img src="${this.branding.logo}" alt="Logo" style="height: 64px; width: auto; max-width: 200px; display: block;">` :
+                `<i class="fas fa-shield-alt"></i>`
+            }
                     </div>
                     <h1 style="font-size: 24px; font-weight: 700; color: var(--text-primary);">Welcome Back</h1>
                     <p style="color: var(--gray-600);">Sign in to access your secure ${this.branding.name || 'Domasy'} workspace</p>
