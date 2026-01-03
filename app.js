@@ -985,6 +985,21 @@ class DomasApp {
                         <i class="fas fa-eye"></i>
                         <span>View Document</span>
                     </div>
+                    ${(() => {
+                const currentUserId = this.currentUser.id || this.currentUser._id;
+                const uploaderId = uploader ? (uploader.id || uploader._id) : null;
+                const isUploader = currentUserId && uploaderId && String(currentUserId) === String(uploaderId);
+                const isSuperAdmin = this.currentUser.role === 'Super Admin';
+
+                if (isUploader || isSuperAdmin) {
+                    return `
+                                <button class="btn-icon delete-doc-btn" onclick="event.stopPropagation(); app.deleteDocument('${doc._id || doc.id}')" title="Delete Document" style="position: absolute; top: 8px; right: 8px; background: rgba(255,255,255,0.9); width: 32px; height: 32px; border-radius: 50%; color: var(--error-600); box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: center; z-index: 10;">
+                                    <i class="fas fa-trash-alt" style="font-size: 14px;"></i>
+                                </button>
+                            `;
+                }
+                return '';
+            })()}
                 </div>
                 <div class="document-card-content">
                     <div class="document-card-header" style="justify-content: space-between;">
