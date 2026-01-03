@@ -165,7 +165,7 @@ exports.uploadDocument = async (req, res) => {
             .map(id => (id !== null && id !== undefined) ? String(id).trim() : '')
             .filter(id => id !== '' && id !== 'undefined' && id !== 'null');
 
-        console.log('[Upload] Final Normalized Reviewer IDs:', reviewerIds);
+        console.log(`[Upload] Processed ${reviewerIds.length} reviewer IDs:`, reviewerIds);
 
         // Generate thumbnail for PDF
         let thumbnail = null;
@@ -236,6 +236,16 @@ exports.uploadDocument = async (req, res) => {
         console.log('[Upload] Workflow object successfully created:', workflow.id);
 
         console.log('[Upload] Workflow created with ID:', workflow.id);
+
+        // Detailed debug logging for document and workflow
+        const docId = document.id || document._id;
+        const uploaderId = document.uploaded_by || document.uploadedBy;
+        const normalizedUploaderId = (uploaderId && typeof uploaderId === 'object') ? (uploaderId.id || uploaderId._id) : uploaderId;
+
+        console.log(`[Population] Doc: ${docId} | Uploader: ${normalizedUploaderId} | Workflow Stages: ${workflow?.stages?.length || 0}`);
+        if (workflow?.stages) {
+            workflow.stages.forEach((s, i) => console.log(`  Stage ${i}: Assignee=${JSON.stringify(s.assignee)} Status=${s.status}`));
+        }
 
         await AuditLogService.create({
             user: req.user.id,

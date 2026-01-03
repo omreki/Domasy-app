@@ -54,30 +54,34 @@ const populateTeamMembers = async (documents) => {
             const wf = workflows[index];
             const docId = doc.id || doc._id;
             const uploaderId = doc.uploaded_by || doc.uploadedBy;
+
+            // Handle uploaderId being either an ID string or a populated object
             const normalizedUploaderId = (uploaderId && typeof uploaderId === 'object') ? (uploaderId.id || uploaderId._id) : uploaderId;
 
-            console.log(`[Population] Processing doc: ${docId}, Uploader: ${normalizedUploaderId}, Workflow Stages: ${wf?.stages?.length || 0}`);
+            console.log(`[Population Debug] Processing doc: ${docId} | Uploader ID: ${normalizedUploaderId} | Workflow Stages: ${wf?.stages?.length || 0}`);
 
             let teamMembers = [];
 
             if (wf && wf.stages) {
-                // Collect and uniqueify reviewer IDs (excluding uploader)
-                const uniqueIds = [...new Set(wf.stages.map(s => {
+                // Collect and uniqueify reviewer IDs, explicitly EXCLUDING the uploader
+                const uniqueReviewerIds = [...new Set(wf.stages.map(s => {
                     const assignee = s.assignee;
                     return (assignee && typeof assignee === 'object') ? (assignee.id || assignee._id) : assignee;
-                }).filter(id => id))];
+                }).filter(id => id && String(id) !== String(normalizedUploaderId)))];
 
-                console.log(`[Population] Unique stage IDs for doc ${docId}:`, uniqueIds);
+                console.log(`[Population Debug] Found ${uniqueReviewerIds.length} unique reviewers for doc ${docId}:`, uniqueReviewerIds);
 
-                teamMembers = uniqueIds.map(uid => teamUsersMap[uid]).filter(u => u);
+                teamMembers = uniqueReviewerIds.map(uid => {
+                    const user = teamUsersMap[uid];
+                    if (!user) console.warn(`[Population Debug] Reviewer ID ${uid} not found in teamUsersMap!`);
+                    return user;
+                }).filter(u => u);
 
                 if (teamMembers.length > 0) {
-                    console.log(`[Population] Found ${teamMembers.length} reviewers for doc ${docId}`);
-                } else {
-                    console.log(`[Population] No matching users found in teamUsersMap for IDs:`, uniqueIds, 'Map keys:', Object.keys(teamUsersMap));
+                    console.log(`[Population Debug] Successfully populated ${teamMembers.length} team members for doc ${docId}`);
                 }
             } else {
-                if (docId) console.log(`[Population] No workflow found for doc ${docId}`);
+                if (docId) console.log(`[Population Debug] No workflow found for doc ${docId}`);
             }
             return { ...doc, teamMembers };
         });
