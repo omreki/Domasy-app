@@ -934,13 +934,27 @@ class DomasApp {
             </div>
         ` : '';
 
+        const fileName = (doc.file?.name || doc.title || '').toLowerCase();
+        const mime = (doc.file?.mimetype || '').toLowerCase();
+        let type = 'other';
+        if (fileName.endsWith('.pdf') || mime === 'application/pdf') type = 'pdf';
+        else if (fileName.endsWith('.doc') || fileName.endsWith('.docx') || mime.includes('word')) type = 'doc';
+        else if (fileName.endsWith('.png') || mime === 'image/png') type = 'png';
+        else if (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg') || mime === 'image/jpeg') type = 'jpg';
+
+        const typeIcons = {
+            'pdf': 'fas fa-file-pdf',
+            'doc': 'fas fa-file-word',
+            'png': 'fas fa-file-image',
+            'jpg': 'fas fa-file-image',
+            'other': 'fas fa-file-alt'
+        };
+        const iconClass = typeIcons[type];
+
         return `
-            <div class="document-card" onclick="app.viewDocument('${doc._id || doc.id}')">
-                <div class="document-thumbnail" style="${!thumbnail ? 'background:var(--gray-100);display:flex;align-items:center;justify-content:center;' : ''}">
-                    ${thumbnail
-                ? `<img src="${thumbnail}" alt="${doc.title}" style="width:100%; height:100%; object-fit:cover;" onerror="this.onerror=null;this.parentNode.innerHTML='<i class=\\\'fas fa-file-alt fa-3x\\\' style=\\\'color:var(--gray-400)\\\'></i>'">`
-                : `<i class="fas fa-file-alt fa-3x" style="color:var(--gray-400)"></i>`
-            }
+            <div class="document-card doc-type-${type}" onclick="app.viewDocument('${doc._id || doc.id}')">
+                <div class="document-thumbnail">
+                    <i class="${iconClass} fa-3x"></i>
                     <div class="document-overlay">
                         <i class="fas fa-eye"></i>
                         <span>View Document</span>
