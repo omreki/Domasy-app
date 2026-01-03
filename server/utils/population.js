@@ -25,7 +25,11 @@ const populateTeamMembers = async (documents) => {
         workflows.forEach(wf => {
             if (wf && wf.stages) {
                 wf.stages.forEach(stage => {
-                    if (stage.assignee) workflowUserIds.add(stage.assignee);
+                    const assignee = stage.assignee;
+                    if (assignee) {
+                        const id = (assignee && typeof assignee === 'object') ? (assignee.id || assignee._id) : assignee;
+                        if (id) workflowUserIds.add(id);
+                    }
                 });
             }
         });
@@ -36,32 +40,38 @@ const populateTeamMembers = async (documents) => {
         if (userIdsArray.length > 0) {
             const { data: users, error } = await supabase
                 .from('users')
-                .select('id, name, email, avatar, role')
+                .select('id, name, email, avatar, role, department')
                 .in('id', userIdsArray);
 
             if (!error && users) {
                 users.forEach(user => {
-                    teamUsersMap[user.id] = user;
+                    teamUsersMap[user.id] = { ...user, _id: user.id };
                 });
             }
         }
 
         return documents.map((doc, index) => {
             const wf = workflows[index];
-            let teamMembers = [];
             const docId = doc.id || doc._id;
+            const uploaderId = doc.uploaded_by || doc.uploadedBy;
+            const normalizedUploaderId = (uploaderId && typeof uploaderId === 'object') ? (uploaderId.id || uploaderId._id) : uploaderId;
+
+            let teamMembers = [];
 
             if (wf && wf.stages) {
-                // Ensure we handle stage.assignee as a string ID
+                // Collect and uniqueify reviewer IDs (excluding uploader)
                 const uniqueIds = [...new Set(wf.stages.map(s => {
                     const assignee = s.assignee;
                     return (assignee && typeof assignee === 'object') ? (assignee.id || assignee._id) : assignee;
-                }).filter(id => id))];
+                }).filter(id => {
+                    const cleanId = id ? (typeof id === 'object' ? (id.id || id._id) : id) : id;
+                    return cleanId && String(cleanId) !== String(normalizedUploaderId);
+                }))];
 
                 teamMembers = uniqueIds.map(uid => teamUsersMap[uid]).filter(u => u);
 
                 if (teamMembers.length > 0) {
-                    console.log(`[Population] Found ${teamMembers.length} team members for doc ${docId}`);
+                    console.log(`[Population] Found ${teamMembers.length} reviewers for doc ${docId}`);
                 }
             } else {
                 if (docId) console.log(`[Population] No workflow found for doc ${docId}`);
