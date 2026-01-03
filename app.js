@@ -993,8 +993,8 @@ class DomasApp {
 
                 if (isUploader || isSuperAdmin) {
                     return `
-                                <button class="btn-icon delete-doc-btn" onclick="event.stopPropagation(); app.deleteDocument('${doc._id || doc.id}')" title="Delete Document" style="position: absolute; top: 8px; right: 8px; background: var(--error-600); width: 24px; height: 24px; border-radius: 50%; color: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center; z-index: 10; transition: background 0.2s;">
-                                    <i class="fas fa-trash-alt" style="font-size: 11px;"></i>
+                                <button class="btn-icon delete-doc-btn" onclick="event.stopPropagation(); app.deleteDocument('${doc._id || doc.id}')" title="Delete Document" style="position: absolute; top: 8px; right: 8px; background: transparent; width: 24px; height: 24px; border: none; color: var(--error-600); display: flex; align-items: center; justify-content: center; z-index: 10;">
+                                    <i class="fas fa-trash-alt" style="font-size: 12px; filter: drop-shadow(0 1px 0 #fff);"></i>
                                 </button>
                             `;
                 }
