@@ -3052,7 +3052,7 @@ class DomasApp {
 
             const modal = `
                 <div class="modal-overlay" id="viewDocumentModal" onclick="app.closeModal(event)">
-                    <div class="modal" onclick="event.stopPropagation()" style="max-width: 1200px;">
+                    <div class="modal" onclick="event.stopPropagation()" style="max-width: 1400px; width: 95%;">
                         <div class="modal-header">
                             <div>
                                 <h2 class="modal-title">${doc.title}</h2>
@@ -3084,7 +3084,7 @@ class DomasApp {
                             </div>
                         </div>
                         <div class="modal-body" style="padding: 0;">
-                            <div style="display: grid; grid-template-columns: 1fr 320px; min-height: 600px;">
+                            <div style="display: grid; grid-template-columns: 1fr 400px; min-height: 600px;">
                                 <!-- Document Viewer -->
                                 <div style="background: var(--gray-100); display: flex; align-items: center; justify-content: center; padding: var(--spacing-xl); position: relative; overflow: hidden;">
                                     
