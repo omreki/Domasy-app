@@ -3140,34 +3140,7 @@ class DomasApp {
                                     <div style="flex: 1; overflow-y: auto;">
                                         <!-- Details Tab -->
                                         <div id="detailsTab" class="tab-content active" style="padding: var(--spacing-lg);">
-                                            <h3 style="font-size: var(--font-size-base); font-weight: 700; margin-bottom: var(--spacing-md);">Properties</h3>
-                                            <div class="properties-grid">
-                                                <div class="property-item">
-                                                    <div class="property-label">UPLOADED BY</div>
-                                                    <div class="property-value">${uploader.name || 'Unknown'}</div>
-                                                </div>
-                                                <div class="property-item">
-                                                    <div class="property-label">DATE / TIME</div>
-                                                    <div class="property-value">${formattedDate}</div>
-                                                </div>
-                                                <div class="property-item">
-                                                    <div class="property-label">Size</div>
-                                                    <div class="property-value">${fileSize}</div>
-                                                </div>
-                                            </div>
-                                            <div class="property-item" style="margin-top: var(--spacing-md);">
-                                                <div class="property-label">DESCRIPTION</div>
-                                                <div class="property-value">${doc.description || 'No description'}</div>
-                                            </div>
-                                            
-                                            <div style="margin-top: var(--spacing-md); padding: var(--spacing-md); background: white; border-top: 1px solid var(--gray-100);">
-                                                <button class="btn btn-outline btn-full" onclick="app.switchTab(null, 'workflow')" style="font-size: var(--font-size-xs); font-weight: 600;">
-                                                    <i class="fas fa-project-diagram" style="margin-right: 8px;"></i> View Full Workflow Progress
-                                                </button>
-                                            </div>
-
-                                                
-                                                ${(() => {
+                                            ${(() => {
                     // Determine if current user should see action buttons
                     if (!workflow) return '';
 
@@ -3207,28 +3180,53 @@ class DomasApp {
                     if (!isCurrentApprover && !isAnyPendingReviewer && !isSuperAdmin && !isApproverRole) return '';
 
                     return `
-                                                    <div style="margin-top: var(--spacing-lg); border-top: 1px solid var(--gray-100); padding-top: var(--spacing-lg);">
-                                                        <h4 style="font-size: var(--font-size-sm); margin-bottom: var(--spacing-md);">YOUR ACTION REQUIRED</h4>
-                                                        
-                                                        <div style="margin-bottom: var(--spacing-md);">
-                                                            <label style="display: block; font-size: 11px; font-weight: 600; color: var(--gray-500); margin-bottom: 4px;">Comments / Notes</label>
-                                                            <textarea id="workflowCommentBox" class="form-textarea" rows="3" placeholder="Type your comments here..." style="width: 100%; resize: vertical; padding: 8px; border: 1px solid var(--gray-300); border-radius: var(--radius-md);"></textarea>
-                                                        </div>
-
-                                                        <button class="btn btn-outline" onclick="app.submitWorkflowAction('${docId}', '${workflow.id}', 'request_changes')" style="width: 100%; margin-bottom: var(--spacing-sm); justify-content: center;">
-                                                            <i class="fas fa-edit"></i> Request Revision
-                                                        </button>
-
-                                                        <button class="btn btn-primary" onclick="app.submitWorkflowAction('${docId}', '${workflow.id}', 'approve')" style="width: 100%; margin-bottom: var(--spacing-sm); justify-content: center;">
-                                                            <i class="fas fa-check"></i> Approve Document
-                                                        </button>
-
-                                                        <button class="btn btn-outline" style="width: 100%; color: var(--error-600); border-color: var(--error-200); justify-content: center;" onclick="app.submitWorkflowAction('${docId}', '${workflow.id}', 'reject')">
-                                                            <i class="fas fa-times"></i> Reject Document
-                                                        </button>
+                                                <div style="margin-bottom: var(--spacing-lg); border-bottom: 1px solid var(--gray-100); padding-bottom: var(--spacing-lg);">
+                                                    <h4 style="font-size: var(--font-size-sm); margin-bottom: var(--spacing-md);">YOUR ACTION REQUIRED</h4>
+                                                    
+                                                    <div style="margin-bottom: var(--spacing-md);">
+                                                        <label style="display: block; font-size: 11px; font-weight: 600; color: var(--gray-500); margin-bottom: 4px;">Comments / Notes</label>
+                                                        <textarea id="workflowCommentBox" class="form-textarea" rows="3" placeholder="Type your comments here..." style="width: 100%; resize: vertical; padding: 8px; border: 1px solid var(--gray-300); border-radius: var(--radius-md);"></textarea>
                                                     </div>
-                                                    `;
+                            
+                                                    <button class="btn btn-outline" onclick="app.submitWorkflowAction('${docId}', '${workflow.id}', 'request_changes')" style="width: 100%; margin-bottom: var(--spacing-sm); justify-content: center;">
+                                                        <i class="fas fa-edit"></i> Request Revision
+                                                    </button>
+                            
+                                                    <button class="btn btn-primary" onclick="app.submitWorkflowAction('${docId}', '${workflow.id}', 'approve')" style="width: 100%; margin-bottom: var(--spacing-sm); justify-content: center;">
+                                                        <i class="fas fa-check"></i> Approve Document
+                                                    </button>
+                            
+                                                    <button class="btn btn-outline" style="width: 100%; color: var(--error-600); border-color: var(--error-200); justify-content: center;" onclick="app.submitWorkflowAction('${docId}', '${workflow.id}', 'reject')">
+                                                        <i class="fas fa-times"></i> Reject Document
+                                                    </button>
+                                                </div>
+                                                `;
                 })()}
+
+                                            <h3 style="font-size: var(--font-size-base); font-weight: 700; margin-bottom: var(--spacing-md);">Properties</h3>
+                                            <div class="properties-grid">
+                                                <div class="property-item">
+                                                    <div class="property-label">UPLOADED BY</div>
+                                                    <div class="property-value">${uploader.name || 'Unknown'}</div>
+                                                </div>
+                                                <div class="property-item">
+                                                    <div class="property-label">DATE / TIME</div>
+                                                    <div class="property-value">${formattedDate}</div>
+                                                </div>
+                                                <div class="property-item">
+                                                    <div class="property-label">Size</div>
+                                                    <div class="property-value">${fileSize}</div>
+                                                </div>
+                                            </div>
+                                            <div class="property-item" style="margin-top: var(--spacing-md);">
+                                                <div class="property-label">DESCRIPTION</div>
+                                                <div class="property-value">${doc.description || 'No description'}</div>
+                                            </div>
+                                            
+                                            <div style="margin-top: var(--spacing-md); padding: var(--spacing-md); background: white; border-top: 1px solid var(--gray-100);">
+                                                <button class="btn btn-outline btn-full" onclick="app.switchTab(null, 'workflow')" style="font-size: var(--font-size-xs); font-weight: 600;">
+                                                    <i class="fas fa-project-diagram" style="margin-right: 8px;"></i> View Full Workflow Progress
+                                                </button>
                                             </div>
                                         </div>
 
