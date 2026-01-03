@@ -189,7 +189,10 @@ exports.uploadDocument = async (req, res) => {
         reviewerIds = [...new Set(reviewerIds
             .map(id => id && typeof id === 'object' ? (id.id || id._id || id) : id)
             .map(id => (id !== null && id !== undefined) ? String(id).trim() : '')
-            .filter(id => id !== '' && id !== 'undefined' && id !== 'null'))];
+            .filter(id => {
+                const s = id.toLowerCase();
+                return id !== '' && s !== 'undefined' && s !== 'null' && !id.startsWith('[') && !id.startsWith('{');
+            }))];
 
         console.log(`[Upload] Final Normalized Reviewer IDs (${reviewerIds.length}):`, reviewerIds);
 

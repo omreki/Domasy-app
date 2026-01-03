@@ -2879,8 +2879,6 @@ class DomasApp {
             reviewers.forEach(id => {
                 formData.append('reviewers[]', id);
             });
-            // Also keep JSON version for backward compatibility or direct API use
-            formData.append('reviewers', JSON.stringify(reviewers));
         }
 
         // ALWAYS APPEND FILE LAST for better compatibility with some multipart parsers
@@ -3651,7 +3649,7 @@ class DomasApp {
                                 <div class="stage-assignee" style="display: flex; align-items: center; gap: var(--spacing-sm); padding: var(--spacing-xs); background: var(--gray-50); border-radius: var(--radius-sm); margin-bottom: var(--spacing-xs);">
                                     <img src="${(stage.assignee && typeof stage.assignee === 'object' && stage.assignee.avatar) ? stage.assignee.avatar : `https://ui-avatars.com/api/?name=${encodeURIComponent(stage.assignee?.name || 'User')}&background=94a3b8&color=fff`}" alt="${stage.assignee?.name || 'Unassigned'}" style="width: 32px; height: 32px; border-radius: 50%; border: 2px solid white; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
                                     <div>
-                                        <div style="font-weight: 600; font-size: var(--font-size-xs); color: var(--gray-700);">${stage.assignee?.name || (typeof stage.assignee === 'string' ? "Assigned (ID: " + stage.assignee.substring(0, 8) + "...)" : 'Unassigned')}</div>
+                                        <div style="font-weight: 600; font-size: var(--font-size-xs); color: var(--gray-700);">${stage.assignee?.name || (typeof stage.assignee === 'string' && !stage.assignee.startsWith('[') ? "Assigned" : 'Unassigned')}</div>
                                         <div style="font-size: 10px; color: var(--gray-500);">${stage.assignee?.role || (index === 0 ? 'Submitter' : 'Reviewer')} • ${statusText}</div>
                                     </div>
                                 </div>
