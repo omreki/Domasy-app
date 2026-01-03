@@ -162,7 +162,8 @@ exports.uploadDocument = async (req, res) => {
 
         // Final cleanup: Ensure all elements are strings and not empty
         reviewerIds = (Array.isArray(reviewerIds) ? reviewerIds : [reviewerIds])
-            .filter(id => id && typeof id === 'string' && id.trim() !== '' && id !== 'undefined');
+            .map(id => (id !== null && id !== undefined) ? String(id) : '')
+            .filter(id => id.trim() !== '' && id !== 'undefined' && id !== 'null');
 
         console.log('[Upload] Final parsed reviewerIds:', reviewerIds);
 
@@ -319,6 +320,9 @@ exports.updateDocument = async (req, res) => {
                 if (Array.isArray(reviewers)) newReviewerIds = reviewers;
                 else if (typeof reviewers === 'string') newReviewerIds = [reviewers];
             }
+
+            // Normalize to strings
+            newReviewerIds = newReviewerIds.map(id => String(id)).filter(id => id && id !== 'undefined');
 
             const workflowData = await ApprovalWorkflowService.findByDocumentId(req.params.id);
             if (workflowData) {

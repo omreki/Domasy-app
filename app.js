@@ -2981,9 +2981,9 @@ class DomasApp {
                     // Let's pre-select 'pending' and 'current' assignees.
                     if (stage.status === 'pending' || stage.status === 'current') {
                         if (stage.assignee && (stage.assignee.id || stage.assignee._id)) {
-                            currentReviewerIds.add(stage.assignee.id || stage.assignee._id);
-                        } else if (typeof stage.assignee === 'string') {
-                            currentReviewerIds.add(stage.assignee);
+                            currentReviewerIds.add(String(stage.assignee.id || stage.assignee._id));
+                        } else if (stage.assignee) {
+                            currentReviewerIds.add(String(stage.assignee));
                         }
                     }
                 });
@@ -3031,7 +3031,7 @@ class DomasApp {
                                     <div style="max-height: 200px; overflow-y: auto; border: 1px solid var(--gray-200); border-radius: var(--radius-md); padding: var(--spacing-sm); background: var(--gray-50);">
                                         ${users.length > 0 ? users.map(user => `
                                             <label style="display: flex; align-items: center; padding: var(--spacing-xs); cursor: pointer; border-radius: var(--radius-sm); transition: background 0.2s;" onmouseover="this.style.background='var(--gray-100)'" onmouseout="this.style.background='transparent'">
-                                                <input type="checkbox" class="edit-reviewer-checkbox" value="${user.id}" ${currentReviewerIds.has(user.id) ? 'checked' : ''} style="margin-right: var(--spacing-sm);">
+                                                <input type="checkbox" class="edit-reviewer-checkbox" value="${user.id || user._id}" ${currentReviewerIds.has(String(user.id || user._id)) ? 'checked' : ''} style="margin-right: var(--spacing-sm);">
                                                 <img src="${user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=4F46E5&color=fff`}" style="width: 24px; height: 24px; border-radius: 50%; margin-right: var(--spacing-sm);">
                                                 <div style="flex: 1;">
                                                     <div style="font-weight: 500; font-size: var(--font-size-sm);">${user.name}</div>
