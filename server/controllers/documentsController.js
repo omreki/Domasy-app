@@ -142,31 +142,30 @@ exports.uploadDocument = async (req, res) => {
 
         console.log('[Upload] Full req.body:', JSON.stringify(req.body));
 
-        // Parse reviewers if provided as JSON string or array
-        let rawReviewers = reviewers || req.body['reviewers[]'] || req.body.reviewer;
+        // Parse Reviewers properly - support various formats
         let reviewerIds = [];
-        console.log('[Upload] Received reviewers field:', typeof rawReviewers, rawReviewers);
-
-        if (rawReviewers) {
-            if (Array.isArray(rawReviewers)) {
-                reviewerIds = rawReviewers;
-            } else if (typeof rawReviewers === 'string') {
-                try {
-                    reviewerIds = JSON.parse(rawReviewers);
-                } catch (e) {
-                    if (rawReviewers.trim()) {
-                        reviewerIds = [rawReviewers];
-                    }
+        if (reviewers) {
+            try {
+                if (typeof reviewers === 'string') {
+                    reviewerIds = JSON.parse(reviewers);
+                } else if (Array.isArray(reviewers)) {
+                    reviewerIds = reviewers;
+                }
+            } catch (e) {
+                if (typeof reviewers === 'string' && reviewers.trim()) {
+                    reviewerIds = [reviewers];
                 }
             }
+        } else if (req.body['reviewers[]']) {
+            reviewerIds = Array.isArray(req.body['reviewers[]']) ? req.body['reviewers[]'] : [req.body['reviewers[]']];
         }
 
-        // Final cleanup: Ensure all elements are strings and not empty
+        // Final normalization: Array of non-empty strings
         reviewerIds = (Array.isArray(reviewerIds) ? reviewerIds : [reviewerIds])
-            .map(id => (id !== null && id !== undefined) ? String(id) : '')
-            .filter(id => id.trim() !== '' && id !== 'undefined' && id !== 'null');
+            .map(id => (id !== null && id !== undefined) ? String(id).trim() : '')
+            .filter(id => id !== '' && id !== 'undefined' && id !== 'null');
 
-        console.log('[Upload] Final parsed reviewerIds:', reviewerIds);
+        console.log('[Upload] Final Normalized Reviewer IDs:', reviewerIds);
 
         // Generate thumbnail for PDF
         let thumbnail = null;
@@ -174,31 +173,23 @@ exports.uploadDocument = async (req, res) => {
             thumbnail = await generateThumbnail(req.file);
         }
 
-        // Default title to filename if missing or generic 'New Upload'
-        let finalTitle = title;
-        if (!finalTitle || finalTitle.trim() === '' || finalTitle.toLowerCase() === 'new upload') {
-            finalTitle = req.file ? req.file.originalname : 'Untitled Document';
-        }
-
         const docData = {
-            title: finalTitle,
+            title: title || (req.file ? req.file.originalname : 'Untitled'),
             description,
             category: finalCategory,
             approvalStage: approvalStage || 'Manager Review',
             project,
-            currentApprover: reviewerIds.length > 0 ? reviewerIds[0] : currentApprover,
+            currentApprover: reviewerIds.length > 0 ? reviewerIds[0] : (currentApprover || null),
             uploadedBy: req.user.id,
             status: reviewerIds.length > 0 ? 'In Review' : 'Uploaded',
             tags: finalTags,
             thumbnail
         };
 
-        console.log(`[Upload] Document data prepared. Status: ${docData.status}, Reviewers count: ${reviewerIds.length}`);
-
         const document = await DocumentService.create(docData, req.file);
-        console.log('[Upload] Document created with ID:', document.id);
+        console.log('[Upload] Document record created:', document.id);
 
-        // Create approval workflow with reviewer stages
+        // --- Workflow Creation (Harmonized) ---
         const workflowStages = [
             {
                 name: 'Draft Submission',
@@ -206,45 +197,43 @@ exports.uploadDocument = async (req, res) => {
                 department: req.user.department || 'Submitter',
                 status: 'completed',
                 action: 'Approved',
-                note: `${req.user.name} submitted version 1.0`,
-                actionDate: Date.now(),
+                note: `${req.user.name} submitted document`,
+                actionDate: new Date(),
                 order: 1
             }
         ];
 
-        // Add stages for each reviewer
+        // Add reviewer stages
         if (reviewerIds.length > 0) {
             for (let i = 0; i < reviewerIds.length; i++) {
-                const reviewerId = reviewerIds[i];
-                const reviewer = await UserService.findById(reviewerId);
-
+                const rid = reviewerIds[i];
+                const revUser = await UserService.findById(rid);
                 workflowStages.push({
-                    name: reviewer ? `${reviewer.name} Review` : `Review Stage ${i + 1}`,
-                    assignee: reviewerId,
-                    department: reviewer?.department || 'Review',
+                    name: revUser ? `${revUser.name} Review` : `Review Stage ${i + 1}`,
+                    assignee: rid,
+                    department: revUser?.department || 'Review',
                     status: i === 0 ? 'current' : 'pending',
                     order: i + 2
                 });
             }
         } else {
-            // Default single stage if no reviewers specified
+            // Default stage
             workflowStages.push({
-                name: approvalStage || 'Manager Review',
-                assignee: currentApprover || req.user.id,
+                name: 'System Review',
+                assignee: req.user.id,
                 department: 'Management',
                 status: 'current',
                 order: 2
             });
         }
 
-        console.log('[Upload] Creating workflow with stages count:', workflowStages.length, 'for doc:', document.id);
-
         const workflow = await ApprovalWorkflowService.create({
             document: document.id,
             stages: workflowStages,
-            currentStageIndex: 1, // Start at first review stage
+            currentStageIndex: 1,
             overallStatus: 'In Progress'
         });
+        console.log('[Upload] Workflow object successfully created:', workflow.id);
 
         console.log('[Upload] Workflow created with ID:', workflow.id);
 
@@ -361,63 +350,59 @@ exports.updateDocument = async (req, res) => {
         if (reviewers) {
             let newReviewerIds = [];
             try {
-                newReviewerIds = JSON.parse(reviewers);
+                if (typeof reviewers === 'string') {
+                    newReviewerIds = JSON.parse(reviewers);
+                } else if (Array.isArray(reviewers)) {
+                    newReviewerIds = reviewers;
+                }
             } catch (e) {
-                if (Array.isArray(reviewers)) newReviewerIds = reviewers;
-                else if (typeof reviewers === 'string') newReviewerIds = [reviewers];
+                if (typeof reviewers === 'string' && reviewers.trim()) {
+                    newReviewerIds = [reviewers];
+                }
             }
 
             // Normalize to strings
-            newReviewerIds = newReviewerIds.map(id => String(id)).filter(id => id && id !== 'undefined');
+            newReviewerIds = newReviewerIds.map(id => String(id).trim()).filter(id => id && id !== 'undefined');
 
             const workflowData = await ApprovalWorkflowService.findByDocumentId(req.params.id);
             if (workflowData) {
-                // 1. Keep completed/history stages
+                // 1. Keep history
                 const historyStages = workflowData.stages.filter(s => s.status === 'completed' || s.status === 'rejected' || s.status === 'changes_requested');
 
-                // 2. Build new stages for the new list
-                // We need to determine if any of the new reviewers matches the *current* active stage to preserve continuity if possible?
-                // Simpler approach: Rebuild all future stages.
-                // If we have history, the next one becomes 'current'.
-
+                // 2. Build new stages
                 const newStages = [];
-
-                // Add new reviewer stages
                 for (let i = 0; i < newReviewerIds.length; i++) {
                     const rId = newReviewerIds[i];
                     const user = await UserService.findById(rId);
 
-                    // Check if this user was already the "current" one in the old workflow to preserve state? 
-                    // No, "Edit" usually implies overriding the plan.
-                    // We will set the first of the new list to 'current' if we don't have an active rejection/change_req in history.
-
                     newStages.push({
-                        name: user ? `${user.name} Review` : `Review Stage`,
+                        name: user ? `${user.name} Review` : `Review Stage ${i + 1}`,
                         assignee: rId,
                         department: user?.department || 'Review',
                         status: 'pending',
-                        order: historyStages.length + i + 1 // maintain order sequence
+                        order: historyStages.length + i + 1
                     });
                 }
-
-                // 3. Determine 'current' stage
-                // If the last history stage was "rejected" or "changes_requested", the process is arguably halted or back to uploader.
-                // But usually "Edit Reviewers" happens when stuck.
-                // We'll reset the first new stage to 'current' unless the workflow is officially 'Approved'.
 
                 if (newStages.length > 0) {
                     newStages[0].status = 'current';
                 }
 
-                // Combine
                 const finalStages = [...historyStages, ...newStages];
 
-                // Update Workflow
                 await ApprovalWorkflowService.update(workflowData.id, {
                     stages: finalStages,
-                    currentStageIndex: historyStages.length, // Point to the first new stage
-                    overallStatus: historyStages.some(s => s.status === 'rejected') ? 'Rejected' : 'In Progress' // Reset to In Progress if it was pending
+                    currentStageIndex: historyStages.length,
+                    overallStatus: historyStages.some(s => s.status === 'rejected') ? 'Rejected' : 'In Progress'
                 });
+
+                // Update document's current approver and status
+                if (newStages.length > 0) {
+                    await DocumentService.update(req.params.id, {
+                        currentApprover: newStages[0].assignee,
+                        status: 'In Review'
+                    });
+                }
             }
         }
 

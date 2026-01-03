@@ -74,7 +74,7 @@ const populateTeamMembers = async (documents) => {
                 if (teamMembers.length > 0) {
                     console.log(`[Population] Found ${teamMembers.length} reviewers for doc ${docId}`);
                 } else {
-                    console.log(`[Population] No matching users found in teamUsersMap for IDs:`, uniqueIds);
+                    console.log(`[Population] No matching users found in teamUsersMap for IDs:`, uniqueIds, 'Map keys:', Object.keys(teamUsersMap));
                 }
             } else {
                 if (docId) console.log(`[Population] No workflow found for doc ${docId}`);
