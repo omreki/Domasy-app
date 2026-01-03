@@ -180,6 +180,8 @@ exports.uploadDocument = async (req, res) => {
             thumbnail
         };
 
+        console.log(`[Upload] Document data prepared. Status: ${docData.status}, Reviewers count: ${reviewerIds.length}`);
+
         const document = await DocumentService.create(docData, req.file);
         console.log('[Upload] Document created with ID:', document.id);
 
@@ -243,9 +245,25 @@ exports.uploadDocument = async (req, res) => {
             ipAddress: req.ip
         });
 
-        const [populatedDoc] = await populateDocumentUsers([document]);
+        // Populate with safety check for newly created workflows
+        let [populatedDoc] = await populateDocumentUsers([document]);
 
-        console.log(`[Documents] Document ${document.id} uploaded. Team members populated: ${populatedDoc.teamMembers?.length || 0}`);
+        // Safety Fallback: If workflow wasn't picked up by populateDocumentUsers (race condition),
+        // manually attach team members for the response
+        if (populatedDoc && (!populatedDoc.teamMembers || populatedDoc.teamMembers.length === 0) && reviewerIds.length > 0) {
+            console.log(`[Upload] Population fallback triggered for doc ${document.id}`);
+            const { data: teamUsers, error: teamError } = await supabase
+                .from('users')
+                .select('id, name, email, avatar, role')
+                .in('id', reviewerIds);
+
+            if (!teamError && teamUsers) {
+                populatedDoc.teamMembers = teamUsers;
+                console.log(`[Upload] Manually attached ${teamUsers.length} team members`);
+            }
+        }
+
+        console.log(`[Documents] Document ${document.id} upload complete. Team: ${populatedDoc.teamMembers?.length || 0}`);
 
         res.status(201).json({
             success: true,

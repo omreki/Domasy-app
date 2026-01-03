@@ -2440,16 +2440,19 @@ class DomasApp {
                                         Select team members who need to review this document
                                     </p>
                                     <div id="reviewersList" style="max-height: 200px; overflow-y: auto; border: 1px solid var(--gray-200); border-radius: var(--radius-md); padding: var(--spacing-sm);">
-                                        ${users.length > 0 ? users.map(user => `
-                                            <label style="display: flex; align-items: center; padding: var(--spacing-xs); cursor: pointer; border-radius: var(--radius-sm); transition: background 0.2s;" onmouseover="this.style.background='var(--gray-50)'" onmouseout="this.style.background='transparent'">
-                                                <input type="checkbox" class="reviewer-checkbox" value="${user.id}" style="margin-right: var(--spacing-sm);">
-                                                <img src="${user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=4F46E5&color=fff`}" style="width: 24px; height: 24px; border-radius: 50%; margin-right: var(--spacing-sm);">
-                                                <div style="flex: 1;">
-                                                    <div style="font-weight: 500; font-size: var(--font-size-sm);">${user.name}</div>
-                                                    <div style="font-size: var(--font-size-xs); color: var(--gray-500);">${user.role} • ${user.department || 'N/A'}</div>
-                                                </div>
-                                            </label>
-                                        `).join('') : '<div style="padding: var(--spacing-md); text-align: center; color: var(--gray-500);">No users available</div>'}
+                                        ${users.length > 0 ? users.map(user => {
+            const uid = user.id || user._id;
+            return `
+                                                <label for="check_${uid}" style="display: flex; align-items: center; padding: var(--spacing-xs); cursor: pointer; border-radius: var(--radius-sm); transition: background 0.2s;" onmouseover="this.style.background='var(--gray-50)'" onmouseout="this.style.background='transparent'">
+                                                    <input type="checkbox" id="check_${uid}" class="doc-reviewer-checkbox" value="${uid}" style="margin-right: var(--spacing-sm);">
+                                                    <img src="${user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=4F46E5&color=fff`}" style="width: 24px; height: 24px; border-radius: 50%; margin-right: var(--spacing-sm);">
+                                                    <div style="flex: 1;">
+                                                        <div style="font-weight: 500; font-size: var(--font-size-sm);">${user.name}</div>
+                                                        <div style="font-size: var(--font-size-xs); color: var(--gray-500);">${user.role} • ${user.department || 'N/A'}</div>
+                                                    </div>
+                                                </label>
+                                            `;
+        }).join('') : '<div style="padding: var(--spacing-md); text-align: center; color: var(--gray-500);">No users available</div>'}
                                     </div>
                                 </div>
                             </div>
@@ -2507,8 +2510,10 @@ class DomasApp {
         const project = document.getElementById('uploadProject').value;
 
         // Collect selected reviewers
-        const reviewerCheckboxes = document.querySelectorAll('.reviewer-checkbox:checked');
-        const reviewers = Array.from(reviewerCheckboxes).map(cb => cb.value);
+        // Collect selected reviewers - use more specific selector to avoid collisions
+        const reviewerCheckboxes = document.querySelectorAll('#uploadDocumentModal .doc-reviewer-checkbox:checked');
+        const reviewers = Array.from(reviewerCheckboxes).map(cb => cb.value).filter(val => val && val !== 'undefined');
+        console.log('[Upload] Selected Reviewer IDs:', reviewers);
 
         if (!file) {
             this.showToast('error', 'Missing File', 'Please select a file to upload.');
