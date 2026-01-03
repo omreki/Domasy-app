@@ -2369,3 +2369,100 @@ body.layout-top-nav .top-nav-links {
     animation: spin 0.8s linear infinite;
     z-index: 2;
 }
+
+/* ========================================
+   STEPPER COMPONENT
+   ======================================== */
+.stepper {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: var(--spacing-xl);
+    position: relative;
+    padding: 0 var(--spacing-md);
+}
+
+.stepper::before {
+    content: '';
+    position: absolute;
+    top: calc(32px / 2);
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--gray-200);
+    z-index: 1;
+}
+
+.step-item {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-sm);
+    background: var(--gray-50);
+    padding: 0 var(--spacing-sm);
+}
+
+.step-number {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-full);
+    background: white;
+    border: 2px solid var(--gray-300);
+    color: var(--gray-500);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: var(--font-size-sm);
+    transition: all var(--transition-base);
+}
+
+.step-label {
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    color: var(--gray-500);
+    transition: all var(--transition-base);
+}
+
+.step-item.active .step-number {
+    border-color: var(--primary-600);
+    background: var(--primary-600);
+    color: white;
+    box-shadow: 0 0 0 4px var(--primary-50);
+}
+
+.step-item.active .step-label {
+    color: var(--primary-600);
+}
+
+.step-item.completed .step-number {
+    border-color: var(--success-500);
+    background: var(--success-500);
+    color: white;
+}
+
+.step-item.completed .step-label {
+    color: var(--success-600);
+}
+
+.modal-step {
+    display: none;
+}
+
+.modal-step.active {
+    display: block;
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
