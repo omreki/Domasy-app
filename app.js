@@ -2895,7 +2895,7 @@ class DomasApp {
                                         </div>
                                     ` : ''}
 
-                                    <div style="background: white; padding: 0; border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); width: 100%; height:80vh; position: relative; z-index: 1; overflow: hidden; display: flex; flex-direction: column;">
+                                    <div id="mainDocumentViewer" style="background: white; padding: 0; border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); width: 100%; height:80vh; position: relative; z-index: 1; overflow: hidden; display: flex; flex-direction: column;">
                                         ${(() => {
                     // Ensure we have a full URL for the viewer
                     let fullFileUrl = fileUrl;
@@ -3106,9 +3106,9 @@ class DomasApp {
                                                                         <td style="padding: 8px; font-size:12px;">${ver.file_original_name || 'N/A'}</td>
                                                                         <td style="padding: 8px;">
                                                                             ${fileUrl ? `
-                                                                            <a href="${fileUrl}" target="_blank" class="btn btn-sm btn-outline" style="padding: 4px 8px; font-size: 11px;">
-                                                                                <i class="fas fa-download"></i> View
-                                                                            </a>` : 'N/A'}
+                                                                            <button onclick="app.updateDocumentPreview('${fileUrl}', '${ver.file_mimetype || doc.file_mimetype || 'application/pdf'}', '${ver.file_original_name || 'Document'}')" class="btn btn-sm btn-outline" style="padding: 4px 8px; font-size: 11px;">
+                                                                                <i class="fas fa-eye"></i> View
+                                                                            </button>` : 'N/A'}
                                                                         </td>
                                                                     </tr>
                                                                 `;
@@ -4316,6 +4316,41 @@ class DomasApp {
         if (loader) {
             loader.classList.remove('show');
         }
+    }
+
+    updateDocumentPreview(url, mimetype, title) {
+        const viewer = document.getElementById('mainDocumentViewer');
+        if (!viewer) return;
+
+        // Ensure full URL
+        let fullFileUrl = url;
+        if (fullFileUrl && !fullFileUrl.startsWith('http')) {
+            const baseUrl = window.location.origin.includes('localhost') ? 'http://localhost:5000' : window.location.origin;
+            fullFileUrl = `${baseUrl}${fullFileUrl.startsWith('/') ? '' : '/'}${fullFileUrl}`;
+        }
+
+        let content = '';
+        if (mimetype === 'application/pdf') {
+            content = `<iframe src="${fullFileUrl}" style="width:100%; height:100%; border:none;" title="${title}"></iframe>`;
+        } else if (mimetype.startsWith('image/')) {
+            content = `
+                <div style="width:100%; height:100%; overflow:auto; display:flex; align-items:flex-start; justify-content:center; background:#f0f2f5;">
+                    <img src="${fullFileUrl}" alt="${title}" style="max-width:100%; height:auto; display:block; margin: 20px auto; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                </div>
+            `;
+        } else {
+            content = `<div style="text-align:center;padding:50px; margin: auto;">
+                 <i class="fas fa-file-alt fa-5x" style="color:var(--gray-300)"></i>
+                 <div style="margin-top: 20px; font-weight: 600; color: var(--gray-600);">${title || 'Document'}</div>
+                 <p style="color:var(--gray-500); margin: 10px 0;">This file type cannot be previewed directly.</p>
+                 <br>
+                 <a href="${fullFileUrl}" target="_blank" class="btn btn-primary" style="display:inline-block;">
+                    <i class="fas fa-download"></i> Download File
+                 </a>
+               </div>`;
+        }
+
+        viewer.innerHTML = content;
     }
 }
 
