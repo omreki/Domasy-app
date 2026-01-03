@@ -2543,53 +2543,40 @@ class DomasApp {
                                 <div class="step-number">2</div>
                                 <div class="step-label">Assign Approvers</div>
                             </div>
+                            <div class="step-item" id="step3Indicator">
+                                <div class="step-number">3</div>
+                                <div class="step-label">File Attachment</div>
+                            </div>
                         </div>
 
-                        <!-- Step 1: Document Details & File -->
+                        <!-- Step 1: Document Details -->
                         <div class="modal-step active" id="uploadStep1">
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-lg);">
-                                <div>
-                                    <div class="form-group">
-                                        <label class="form-label">Document Title <span style="color:var(--error-500)">*</span></label>
-                                        <input type="text" id="uploadTitle" class="form-input" placeholder="e.g., Q3 2023 Financial Report">
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label">Project <span style="color:var(--error-500)">*</span></label>
-                                        <select id="uploadProject" class="form-select">
-                                            <option value="">Select a project...</option>
-                                            ${projects.map(p => `
-                                                <option value="${p._id || p.id}" ${preSelectedProjectId === (p._id || p.id) ? 'selected' : ''}>
-                                                    ${p.name}
-                                                </option>
-                                            `).join('')}
-                                        </select>
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label">Tag / Category</label>
-                                        <select id="uploadCategory" class="form-select">
-                                            <option value="General">General</option>
-                                            ${categories.map(cat => `<option value="${cat}">${cat}</option>`).join('')}
-                                        </select>
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label">Description <span style="color: var(--gray-400);">(Optional)</span></label>
-                                        <textarea id="uploadDesc" class="form-textarea" placeholder="Briefly describe the contents..." style="min-height:80px;"></textarea>
-                                    </div>
+                            <div style="max-width: 600px; margin: 0 auto;">
+                                <div class="form-group">
+                                    <label class="form-label">Document Title <span style="color:var(--error-500)">*</span></label>
+                                    <input type="text" id="uploadTitle" class="form-input" placeholder="e.g., Q3 2023 Financial Report">
                                 </div>
-                                <div>
-                                    <label class="form-label">File Attachment <span style="color:var(--error-500)">*</span></label>
-                                    <div class="upload-area" onclick="document.getElementById('docFileInput').click()" style="cursor:pointer; height:200px; display:flex; flex-direction:column; justify-content:center; border: 2px dashed var(--gray-300); background: var(--gray-50);">
-                                        <i class="fas fa-cloud-upload-alt" style="font-size:3rem; color:var(--primary-300); margin-bottom:var(--spacing-md);"></i>
-                                        <h3>Click to upload</h3>
-                                        <p>PDF, DOCX, PNG (max. 25MB)</p>
-                                        <input type="file" id="docFileInput" hidden onchange="app.handleFileSelect(event)">
-                                    </div>
-                                    <div id="selectedFileInfo" style="margin-top: var(--spacing-md); display:none;">
-                                        <div class="document-preview-info" style="border: 1px solid var(--gray-200); border-radius:var(--radius-lg); padding: var(--spacing-md);">
-                                            <div id="fileName" style="font-weight: 600; font-size: var(--font-size-sm);"></div>
-                                            <div id="fileSize" style="font-size: var(--font-size-xs); color: var(--gray-500);"></div>
-                                        </div>
-                                    </div>
+                                <div class="form-group">
+                                    <label class="form-label">Project <span style="color:var(--error-500)">*</span></label>
+                                    <select id="uploadProject" class="form-select">
+                                        <option value="">Select a project...</option>
+                                        ${projects.map(p => `
+                                            <option value="${p._id || p.id}" ${preSelectedProjectId === (p._id || p.id) ? 'selected' : ''}>
+                                                ${p.name}
+                                            </option>
+                                        `).join('')}
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Tag / Category</label>
+                                    <select id="uploadCategory" class="form-select">
+                                        <option value="General">General</option>
+                                        ${categories.map(cat => `<option value="${cat}">${cat}</option>`).join('')}
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Description <span style="color: var(--gray-400);">(Optional)</span></label>
+                                    <textarea id="uploadDesc" class="form-textarea" placeholder="Briefly describe the contents..." style="min-height:120px;"></textarea>
                                 </div>
                             </div>
                         </div>
@@ -2601,7 +2588,7 @@ class DomasApp {
                                     Assign Reviewers <span style="color:var(--error-500)">*</span>
                                 </label>
                                 <p style="color: var(--gray-500); margin-bottom: var(--spacing-lg);">
-                                    Select the team members responsible for reviewing and approving this document. They will be notified in the order they appear.
+                                    Select the team members responsible for reviewing and approving this document.
                                 </p>
                                 <div id="reviewersList" style="max-height: 400px; overflow-y: auto; border: 1px solid var(--gray-200); border-radius: var(--radius-lg); padding: var(--spacing-sm); background: white;">
                                     ${users.length > 0 ? users.sort((a, b) => a.name.localeCompare(b.name)).map(user => {
@@ -2621,19 +2608,51 @@ class DomasApp {
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Step 3: File Attachment -->
+                        <div class="modal-step" id="uploadStep3">
+                            <div style="max-width: 600px; margin: 0 auto; text-align: center;">
+                                <label class="form-label" style="font-size: var(--font-size-lg); font-weight: 700; display: block; margin-bottom: var(--spacing-md);">
+                                    Upload Document File <span style="color:var(--error-500)">*</span>
+                                </label>
+                                <p style="color: var(--gray-500); margin-bottom: var(--spacing-xl);">
+                                    Please select the PDF or document file you wish to upload for review.
+                                </p>
+                                <div class="upload-area" onclick="document.getElementById('docFileInput').click()" style="cursor:pointer; height:250px; display:flex; flex-direction:column; justify-content:center; border: 2px dashed var(--gray-300); background: var(--gray-50); border-radius: var(--radius-xl); transition: all 0.3s ease;">
+                                    <i class="fas fa-cloud-upload-alt" style="font-size:4rem; color:var(--primary-300); margin-bottom:var(--spacing-md);"></i>
+                                    <h3 style="margin-bottom: var(--spacing-sm);">Click to select file</h3>
+                                    <p style="color: var(--gray-500);">PDF, DOCX, PNG (max. 25MB)</p>
+                                    <input type="file" id="docFileInput" hidden onchange="app.handleFileSelect(event)">
+                                </div>
+                                <div id="selectedFileInfo" style="margin-top: var(--spacing-xl); display:none;">
+                                    <div class="document-preview-info" style="border: 2px solid var(--primary-100); background: var(--primary-50); border-radius:var(--radius-lg); padding: var(--spacing-lg); display: flex; align-items: center; gap: var(--spacing-md); text-align: left;">
+                                        <div style="width: 48px; height: 48px; background: white; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; color: var(--primary-600); font-size: 1.5rem; box-shadow: var(--shadow-sm);">
+                                            <i class="fas fa-file-pdf"></i>
+                                        </div>
+                                        <div style="flex: 1;">
+                                            <div id="fileName" style="font-weight: 700; font-size: var(--font-size-base); color: var(--gray-900);"></div>
+                                            <div id="fileSize" style="font-size: var(--font-size-sm); color: var(--gray-600);"></div>
+                                        </div>
+                                        <div style="color: var(--success-500);">
+                                            <i class="fas fa-check-circle fa-lg"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     
                     <div class="modal-footer">
                         <button class="btn btn-secondary" onclick="app.closeModal()">Cancel</button>
                         <div style="flex: 1;"></div>
-                        <button class="btn btn-secondary" id="uploadPrevBtn" onclick="app.setUploadStep(1)" style="display:none;">
+                        <button class="btn btn-secondary" id="uploadPrevBtn" onclick="app.setUploadStep(app.currentUploadStep - 1)" style="display:none;">
                             <i class="fas fa-arrow-left"></i> Previous
                         </button>
-                        <button class="btn btn-primary" id="uploadNextBtn" onclick="app.validateUploadStep1()">
-                            Next: Assign Reviewers <i class="fas fa-arrow-right"></i>
+                        <button class="btn btn-primary" id="uploadNextBtn" onclick="app.handleNextStep()">
+                            Next Step <i class="fas fa-arrow-right"></i>
                         </button>
                         <button class="btn btn-primary" id="uploadSubmitBtn" onclick="app.uploadDocument()" style="display:none;">
-                            <i class="fas fa-upload"></i> Upload & Notify Team
+                            <i class="fas fa-upload"></i> Complete Upload
                         </button>
                     </div>
                 </div>
@@ -2644,10 +2663,17 @@ class DomasApp {
         this.setUploadStep(1);
     }
 
+    handleNextStep() {
+        if (this.currentUploadStep === 1) {
+            this.validateUploadStep1();
+        } else if (this.currentUploadStep === 2) {
+            this.validateUploadStep2();
+        }
+    }
+
     validateUploadStep1() {
         const title = document.getElementById('uploadTitle').value;
         const project = document.getElementById('uploadProject').value;
-        const fileInput = document.getElementById('docFileInput');
 
         if (!title) {
             this.showToast('error', 'Missing Title', 'Please enter a document title.');
@@ -2657,12 +2683,17 @@ class DomasApp {
             this.showToast('error', 'Missing Project', 'Please select a project.');
             return;
         }
-        if (!fileInput.files || fileInput.files.length === 0) {
-            this.showToast('error', 'Missing File', 'Please select a file to upload.');
-            return;
-        }
 
         this.setUploadStep(2);
+    }
+
+    validateUploadStep2() {
+        const reviewerCheckboxes = document.querySelectorAll('.doc-reviewer-checkbox:checked');
+        if (reviewerCheckboxes.length === 0) {
+            this.showToast('error', 'Missing Reviewers', 'Please select at least one reviewer.');
+            return;
+        }
+        this.setUploadStep(3);
     }
 
     setUploadStep(step) {
@@ -2694,9 +2725,19 @@ class DomasApp {
 
         if (step === 1) {
             if (prevBtn) prevBtn.style.display = 'none';
-            if (nextBtn) nextBtn.style.display = 'flex';
+            if (nextBtn) {
+                nextBtn.style.display = 'flex';
+                nextBtn.innerHTML = 'Next: Assign Approvers <i class="fas fa-arrow-right"></i>';
+            }
             if (submitBtn) submitBtn.style.display = 'none';
         } else if (step === 2) {
+            if (prevBtn) prevBtn.style.display = 'flex';
+            if (nextBtn) {
+                nextBtn.style.display = 'flex';
+                nextBtn.innerHTML = 'Next: File Attachment <i class="fas fa-arrow-right"></i>';
+            }
+            if (submitBtn) submitBtn.style.display = 'none';
+        } else if (step === 3) {
             if (prevBtn) prevBtn.style.display = 'flex';
             if (nextBtn) nextBtn.style.display = 'none';
             if (submitBtn) submitBtn.style.display = 'flex';
