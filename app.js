@@ -132,6 +132,15 @@ class DomasApp {
             loginSubtitle.textContent = `Sign in to access your secure ${systemName} workspace`;
         }
 
+        // Update login page logo
+        const loginLogoContainer = document.getElementById('loginLogoContainer');
+        if (loginLogoContainer) {
+            const logoContent = this.branding.logo ?
+                `<img src="${this.branding.logo}" alt="Logo" style="height: 64px; width: auto; max-width: 200px; display: block;">` :
+                `<i class="fas fa-shield-alt"></i>`;
+            loginLogoContainer.innerHTML = logoContent;
+        }
+
         // Apply Sidebar Colors
         if (this.branding.sidebarColor) {
             document.documentElement.style.setProperty('--sidebar-bg', this.branding.sidebarColor);
@@ -194,7 +203,7 @@ class DomasApp {
         loginDiv.innerHTML = `
             <div class="card" style="width: 100%; max-width: 400px; padding: var(--spacing-xl); box-shadow: var(--shadow-xl); border: 1px solid var(--gray-200);">
                 <div style="text-align: center; margin-bottom: var(--spacing-xl);">
-                    <div style="color: var(--primary-600); font-size: 36px; margin-bottom: var(--spacing-md); display: flex; justify-content: center;">
+                    <div id="loginLogoContainer" style="color: var(--primary-600); font-size: 36px; margin-bottom: var(--spacing-md); display: flex; justify-content: center;">
                         ${this.branding.logo ?
                 `<img src="${this.branding.logo}" alt="Logo" style="height: 64px; width: auto; max-width: 200px; display: block;">` :
                 `<i class="fas fa-shield-alt"></i>`
