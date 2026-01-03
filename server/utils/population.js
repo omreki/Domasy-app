@@ -23,8 +23,8 @@ const populateTeamMembers = async (documents) => {
         // 1. Fetch all workflows for these documents
         const { data: workflows, error: wfError } = await supabase
             .from('approval_workflows')
-            .select('document_id, stages')
-            .in('document_id', docIds);
+            .select('document_id, document, stages')
+            .or(`document_id.in.(${docIds.join(',')}),document.in.(${docIds.join(',')})`);
 
         if (wfError || !workflows) {
             console.error('[Population] Workflow fetch error or empty:', wfError);
@@ -36,8 +36,11 @@ const populateTeamMembers = async (documents) => {
         const allUserIds = new Set();
 
         workflows.forEach(wf => {
-            const key = String(wf.document_id).toLowerCase();
-            workflowsMap[key] = wf;
+            const did = wf.document_id || wf.document;
+            if (did) {
+                const key = String(did).toLowerCase().trim();
+                workflowsMap[key] = wf;
+            }
             if (wf.stages && Array.isArray(wf.stages)) {
                 wf.stages.forEach(s => {
                     let aid = s.assignee;
@@ -67,8 +70,9 @@ const populateTeamMembers = async (documents) => {
 
         // 3. Re-map team members to each document
         return documents.map(doc => {
-            const docId = String(doc.id || doc._id).toLowerCase();
-            const wf = workflowsMap[docId];
+            const docId = doc.id || doc._id;
+            const normalizedId = docId ? String(docId).toLowerCase().trim() : '';
+            const wf = workflowsMap[normalizedId];
             let teamMembers = [];
 
             if (wf && wf.stages) {

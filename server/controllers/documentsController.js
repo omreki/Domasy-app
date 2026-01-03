@@ -234,23 +234,34 @@ exports.uploadDocument = async (req, res) => {
         }
 
         const workflow = await ApprovalWorkflowService.create({
-            document: document.id,
+            document_id: document.id,
             stages: workflowStages,
             currentStageIndex: 1,
             overallStatus: 'In Progress'
         });
         console.log('[Upload] Workflow object successfully created:', workflow.id);
 
-        console.log('[Upload] Workflow created with ID:', workflow.id);
+        // Populate document with related entities
+        let [populatedDoc] = await populateDocumentUsers([document]);
 
-        // Detailed debug logging for document and workflow
-        const docId = document.id || document._id;
-        const uploaderId = document.uploaded_by || document.uploadedBy;
-        const normalizedUploaderId = (uploaderId && typeof uploaderId === 'object') ? (uploaderId.id || uploaderId._id) : uploaderId;
+        // FORCE ATTACH TEAM MEMBERS to guarantee they show up in the UI immediately
+        if (reviewerIds.length > 0) {
+            console.log(`[Upload] Manually populating team for document ${document.id}`);
+            try {
+                const { data: teamUsers, error: teamError } = await supabase
+                    .from('users')
+                    .select('id, name, email, avatar, role, department')
+                    .in('id', reviewerIds);
 
-        console.log(`[Population] Doc: ${docId} | Uploader: ${normalizedUploaderId} | Workflow Stages: ${workflow?.stages?.length || 0}`);
-        if (workflow?.stages) {
-            workflow.stages.forEach((s, i) => console.log(`  Stage ${i}: Assignee=${JSON.stringify(s.assignee)} Status=${s.status}`));
+                if (!teamError && teamUsers) {
+                    const userMap = {};
+                    teamUsers.forEach(u => userMap[u.id] = { ...u, _id: u.id });
+                    populatedDoc.teamMembers = reviewerIds.map(id => userMap[id]).filter(u => u);
+                    console.log(`[Upload] Attached ${populatedDoc.teamMembers.length} team members to response`);
+                }
+            } catch (popErr) {
+                console.error('[Upload] Manual population failed:', popErr);
+            }
         }
 
         await AuditLogService.create({
@@ -262,31 +273,6 @@ exports.uploadDocument = async (req, res) => {
             details: `New document uploaded${reviewerIds.length > 0 ? ` with ${reviewerIds.length} reviewer(s)` : ''}`,
             ipAddress: req.ip
         });
-
-        // Populate document with related entities
-        let [populatedDoc] = await populateDocumentUsers([document]);
-
-        // FORCE ATTACH TEAM MEMBERS to guarantee they show up in the UI immediately
-        // This is a robust fallback to ensure the frontend always gets the team members
-        if (reviewerIds.length > 0) {
-            console.log(`[Upload] Manually populating team for document ${document.id}`);
-            try {
-                const { data: teamUsers, error: teamError } = await supabase
-                    .from('users')
-                    .select('id, name, email, avatar, role, department')
-                    .in('id', reviewerIds);
-
-                if (!teamError && teamUsers) {
-                    // Map back to maintain original order if possible, though Set/unique is fine
-                    const userMap = {};
-                    teamUsers.forEach(u => userMap[u.id] = { ...u, _id: u.id });
-                    populatedDoc.teamMembers = reviewerIds.map(id => userMap[id]).filter(u => u);
-                    console.log(`[Upload] Attached ${populatedDoc.teamMembers.length} team members to response`);
-                }
-            } catch (popErr) {
-                console.error('[Upload] Manual population failed:', popErr);
-            }
-        }
 
         // --- EMAIL NOTIFICATIONS for UPLOAD ---
         setImmediate(async () => {
@@ -407,23 +393,52 @@ exports.updateDocument = async (req, res) => {
                     overallStatus: historyStages.some(s => s.status === 'rejected') ? 'Rejected' : 'In Progress'
                 });
 
-                // Update document's current approver and status based on the new first stage
+                // Update document's current approver and status
                 const nextStage = finalStages[historyStages.length];
                 if (nextStage) {
                     await DocumentService.update(req.params.id, {
                         currentApprover: nextStage.assignee,
                         status: 'In Review'
                     });
-                } else if (historyStages.length < finalStages.length) {
-                    // Fallback if index logic is weird
-                    const currentInFinal = finalStages.find(s => s.status === 'current');
-                    if (currentInFinal) {
-                        await DocumentService.update(req.params.id, {
-                            currentApprover: currentInFinal.assignee,
-                            status: 'In Review'
-                        });
-                    }
                 }
+            } else {
+                // Self-healing: Create missing workflow
+                console.log('[Update] No workflow found, creating new one...');
+                const workflowStages = [
+                    {
+                        name: 'Draft Submission',
+                        assignee: req.user.id,
+                        department: req.user.department || 'Submitter',
+                        status: 'completed',
+                        action: 'Approved',
+                        actionDate: new Date(),
+                        order: 1
+                    }
+                ];
+
+                for (let i = 0; i < newReviewerIds.length; i++) {
+                    const rId = newReviewerIds[i];
+                    const user = await UserService.findById(rId);
+                    workflowStages.push({
+                        name: user ? `${user.name} Review` : `Review Stage ${i + 1}`,
+                        assignee: rId,
+                        department: user?.department || 'Review',
+                        status: i === 0 ? 'current' : 'pending',
+                        order: i + 2
+                    });
+                }
+
+                await ApprovalWorkflowService.create({
+                    document_id: req.params.id,
+                    stages: workflowStages,
+                    currentStageIndex: 1,
+                    overallStatus: 'In Progress'
+                });
+
+                await DocumentService.update(req.params.id, {
+                    currentApprover: newReviewerIds[0],
+                    status: 'In Review'
+                });
             }
         }
 
