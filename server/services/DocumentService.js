@@ -50,9 +50,6 @@ class DocumentService {
             return fileData;
         } catch (err) {
             console.error('[DocumentService] File storage failed:', err);
-            if (err.message && err.message.includes('row-level security policy')) {
-                console.error('[DocumentService] RLS Violation detected. Ensure you are using the SERVICE_ROLE_KEY for backend uploads and that the bucket exists.');
-            }
             throw new Error(`File upload helper failed: ${err.message}`);
         }
     }

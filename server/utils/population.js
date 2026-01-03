@@ -10,86 +10,85 @@ const populateTeamMembers = async (documents) => {
     if (!documents || documents.length === 0) return [];
 
     try {
-        // Normalize document IDs to strings
+        // 0. Extract unique document IDs and normalize them for lookup
         const docIds = documents.map(doc => {
-            const id = doc.id || doc._id;
-            return id ? String(id).toLowerCase() : null;
-        }).filter(id => id);
+            const id = String(doc.id || doc._id || '').trim();
+            return id ? id : null;
+        }).filter(Boolean);
 
-        if (docIds.length === 0) {
-            return documents.map(d => ({ ...d, teamMembers: [] }));
-        }
+        if (docIds.length === 0) return documents.map(d => ({ ...d, teamMembers: [] }));
 
-        // 1. Fetch all workflows for these documents
+        // 1. Fetch workflows. We check both document_id and the legacy document field.
         const { data: workflows, error: wfError } = await supabase
             .from('approval_workflows')
             .select('document_id, document, stages')
             .or(`document_id.in.(${docIds.join(',')}),document.in.(${docIds.join(',')})`);
 
         if (wfError || !workflows) {
-            console.error('[Population] Workflow fetch error or empty:', wfError);
+            console.error('[Population] Workflow fetch error:', wfError);
             return documents.map(d => ({ ...d, teamMembers: [] }));
         }
 
-        // Map workflows by serialized document_id
-        const workflowsMap = {};
+        // 2. Map workflows to documents and collect ALL unique user IDs involved
+        const workflowByDocId = {};
         const allUserIds = new Set();
 
         workflows.forEach(wf => {
-            const did = wf.document_id || wf.document;
+            const did = String(wf.document_id || wf.document || '').toLowerCase().trim();
             if (did) {
-                const key = String(did).toLowerCase().trim();
-                workflowsMap[key] = wf;
-            }
-            if (wf.stages && Array.isArray(wf.stages)) {
-                wf.stages.forEach(s => {
-                    let aid = s.assignee;
-                    if (aid && typeof aid === 'object') aid = aid.id || aid._id;
-                    if (aid) allUserIds.add(String(aid).toLowerCase().trim());
-                });
+                workflowByDocId[did] = wf;
+                if (wf.stages && Array.isArray(wf.stages)) {
+                    wf.stages.forEach(stage => {
+                        let aid = stage.assignee;
+                        if (aid && typeof aid === 'object') aid = aid.id || aid._id;
+                        if (aid) allUserIds.add(String(aid).toLowerCase().trim());
+                    });
+                }
             }
         });
 
-        // 2. Fetch all involved users in a single query
-        const teamUsersMap = {};
-        const userIdsArray = Array.from(allUserIds);
+        // 3. Fetch all users in a single batch query
+        const usersMap = {};
+        const userIdsToFetch = Array.from(allUserIds);
 
-        if (userIdsArray.length > 0) {
+        if (userIdsToFetch.length > 0) {
             const { data: users, error: uError } = await supabase
                 .from('users')
                 .select('id, name, email, avatar, role, department')
-                .in('id', userIdsArray);
+                .in('id', userIdsToFetch);
 
             if (!uError && users) {
                 users.forEach(u => {
                     const key = String(u.id).toLowerCase().trim();
-                    teamUsersMap[key] = { ...u, _id: u.id };
+                    usersMap[key] = { ...u, _id: u.id };
                 });
             }
         }
 
-        // 3. Re-map team members to each document
+        // 4. Attach team members to documents
         return documents.map(doc => {
-            const docId = doc.id || doc._id;
-            const normalizedId = docId ? String(docId).toLowerCase().trim() : '';
-            const wf = workflowsMap[normalizedId];
-            let teamMembers = [];
+            const rawId = String(doc.id || doc._id || '').toLowerCase().trim();
+            const wf = workflowByDocId[rawId];
+            const teamMembers = [];
 
             if (wf && wf.stages) {
-                const uniqueIds = [...new Set(wf.stages.map(s => {
+                const uniqueAssigneeIds = [...new Set(wf.stages.map(s => {
                     let aid = s.assignee;
                     if (aid && typeof aid === 'object') aid = aid.id || aid._id;
                     return aid ? String(aid).toLowerCase().trim() : null;
-                }).filter(id => id))];
+                }).filter(Boolean))];
 
-                teamMembers = uniqueIds.map(uid => teamUsersMap[uid]).filter(u => u);
+                uniqueAssigneeIds.forEach(uid => {
+                    if (usersMap[uid]) {
+                        teamMembers.push(usersMap[uid]);
+                    }
+                });
             }
 
-            // Return a new object with teamMembers attached
             return { ...doc, teamMembers };
         });
     } catch (err) {
-        console.error('[Population] Team population error:', err);
+        console.error('[Population] Team population critical error:', err);
         return documents.map(doc => ({ ...doc, teamMembers: [] }));
     }
 };

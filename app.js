@@ -3697,14 +3697,10 @@ class DomasApp {
                                 </div>
                                 
                                 <div class="stage-assignee" style="display: flex; align-items: center; gap: var(--spacing-sm); padding: var(--spacing-xs); background: var(--gray-50); border-radius: var(--radius-sm); margin-bottom: var(--spacing-xs);">
-                                    <img src="${stage.assignee?.avatar || 'https://ui-avatars.com/api/?name=User&background=94a3b8&color=fff'}" alt="${stage.assignee?.name || 'Unassigned'}" style="width: 32px; height: 32px; border-radius: 50%; border: 2px solid white; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                                    <div style="flex: 1;">
-                                        <div style="font-weight: 600; font-size: var(--font-size-sm);">${stage.assignee?.name || 'Unassigned'}</div>
-                                        <div style="font-size: var(--font-size-xs); color: var(--gray-500);">
-                                            ${stage.assignee?.role || 'N/A'} 
-                                            <span style="margin: 0 4px">•</span> 
-                                            <span style="color:var(--${colorClass === 'completed' ? 'success' : colorClass === 'current' ? 'info' : (colorClass === 'rejected' ? 'error' : (colorClass === 'warning' ? 'warning' : 'gray'))}-600); font-weight:500;">${statusText}</span>
-                                        </div>
+                                    <img src="${(stage.assignee && typeof stage.assignee === 'object' && stage.assignee.avatar) ? stage.assignee.avatar : `https://ui-avatars.com/api/?name=${encodeURIComponent(stage.assignee?.name || 'User')}&background=94a3b8&color=fff`}" alt="${stage.assignee?.name || 'Unassigned'}" style="width: 32px; height: 32px; border-radius: 50%; border: 2px solid white; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                                    <div>
+                                        <div style="font-weight: 600; font-size: var(--font-size-xs); color: var(--gray-700);">${stage.assignee?.name || (typeof stage.assignee === 'string' ? "Assigned (ID: " + stage.assignee.substring(0, 8) + "...)" : 'Unassigned')}</div>
+                                        <div style="font-size: 10px; color: var(--gray-500);">${stage.assignee?.role || (index === 0 ? 'Submitter' : 'Reviewer')} • ${statusText}</div>
                                     </div>
                                 </div>
 
