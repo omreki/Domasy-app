@@ -3062,6 +3062,9 @@ class DomasApp {
                                 </div>
                             </div>
                             <div style="display: flex; gap: var(--spacing-sm);">
+                                <a href="${fileUrl}" target="_blank" class="btn btn-outline btn-sm" style="display: flex; align-items: center; gap: 8px; text-decoration: none;">
+                                    <i class="fas fa-external-link-alt"></i> View Full File
+                                </a>
                                 ${canUploadRevision ? `
                                     <button class="btn btn-primary btn-sm" onclick="app.showUploadRevisionModal('${docId}')">
                                         <i class="fas fa-upload"></i> Upload Revision
@@ -3163,10 +3166,6 @@ class DomasApp {
                                                 </button>
                                             </div>
 
-                                            <div style="margin-top: var(--spacing-xl);">
-                                                <a href="${fileUrl}" target="_blank" class="btn btn-outline" style="width: 100%; margin-bottom: var(--spacing-sm); display: flex; align-items: center; justify-content: center; gap: 8px;">
-                                                    <i class="fas fa-external-link-alt"></i> View Full File
-                                                </a>
                                                 
                                                 ${(() => {
                     // Determine if current user should see action buttons
