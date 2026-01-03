@@ -174,8 +174,14 @@ exports.uploadDocument = async (req, res) => {
             thumbnail = await generateThumbnail(req.file);
         }
 
+        // Default title to filename if missing or generic 'New Upload'
+        let finalTitle = title;
+        if (!finalTitle || finalTitle.trim() === '' || finalTitle.toLowerCase() === 'new upload') {
+            finalTitle = req.file ? req.file.originalname : 'Untitled Document';
+        }
+
         const docData = {
-            title,
+            title: finalTitle,
             description,
             category: finalCategory,
             approvalStage: approvalStage || 'Manager Review',
@@ -667,11 +673,32 @@ exports.uploadRevision = async (req, res) => {
         // Update Document
         const newVersion = (document.version || 1) + 1;
 
+        // Preserve History in Metadata
+        const historyEntry = {
+            version: document.version || 1,
+            file_url: document.file_url,
+            file_path: document.file_path,
+            file_name: document.file_name,
+            file_original_name: document.file_original_name,
+            file_mimetype: document.file_mimetype,
+            file_size: document.file_size,
+            created_at: document.updated_at || document.created_at, // The time this version was valid until
+            uploaded_by: document.uploaded_by
+        };
+
+        const existingMetadata = document.metadata || {};
+        const history = existingMetadata.history || [];
+        history.push(historyEntry);
+
         const updateData = {
             ...fileData, // Spread Supabase fields (file_url, file_path, etc.)
             status: 'In Review',
             version: newVersion,
-            thumbnail: thumbnail || document.thumbnail
+            thumbnail: thumbnail || document.thumbnail,
+            metadata: {
+                ...existingMetadata,
+                history: history
+            }
         };
 
         const updatedDoc = await DocumentService.update(req.params.id, updateData);

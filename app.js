@@ -2862,7 +2862,7 @@ class DomasApp {
                                 <h2 class="modal-title">${doc.title}</h2>
                                 <div style="display: flex; gap: var(--spacing-sm); margin-top: var(--spacing-sm);">
                                     <span class="badge badge-info">${doc.status}</span>
-                                    <span class="badge badge-gray">v${doc.version || 1}</span>
+                                    <span class="badge badge-gray" style="cursor: pointer;" onclick="app.switchTab(null, 'history')" title="View Version History">v${doc.version || 1}</span>
                                 </div>
                             </div>
                             <div style="display: flex; gap: var(--spacing-sm);">
@@ -2934,6 +2934,7 @@ class DomasApp {
                                     <div style="display: flex; border-bottom: 1px solid var(--gray-200);">
                                         <button class="tab-btn active" onclick="app.switchTab(event, 'details')">Details</button>
                                         <button class="tab-btn" onclick="app.switchTab(event, 'workflow')">Workflow</button>
+                                        <button class="tab-btn" onclick="app.switchTab(event, 'history')">History</button>
                                     </div>
 
                                     <!-- Tab Content -->
@@ -3044,6 +3045,78 @@ class DomasApp {
                                         <div id="workflowTab" class="tab-content" style="padding: var(--spacing-lg); display: none;">
                                             <h3 style="font-size: var(--font-size-base); font-weight: 700; margin-bottom: var(--spacing-md);">Approval Chain</h3>
                                             ${this.renderWorkflowChain(workflow)}
+                                        </div>
+
+                                        <!-- History Tab -->
+                                        <div id="historyTab" class="tab-content" style="padding: var(--spacing-lg); display: none;">
+                                            <h3 style="font-size: var(--font-size-base); font-weight: 700; margin-bottom: var(--spacing-md);">Version History</h3>
+                                            
+                                            <div class="table-container">
+                                                <table class="data-table" style="width: 100%;">
+                                                    <thead>
+                                                        <tr>
+                                                            <th style="padding: 8px; text-align: left;">Version</th>
+                                                            <th style="padding: 8px; text-align: left;">Date</th>
+                                                            <th style="padding: 8px; text-align: left;">File Name</th>
+                                                            <th style="padding: 8px; text-align: left;">Action</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        ${(() => {
+                    const history = doc.metadata?.history || [];
+                    const allVersions = [
+                        // Current Version
+                        {
+                            version: doc.version || 1,
+                            created_at: doc.updated_at || doc.created_at,
+                            file_original_name: doc.file_original_name || doc.file_name || 'Current File',
+                            file_url: doc.file_url,
+                            isCurrent: true
+                        },
+                        // Past Versions
+                        ...history
+                    ].sort((a, b) => b.version - a.version);
+
+                    // Deduplicate by version just in case
+                    const seen = new Set();
+                    const uniqueVersions = [];
+                    for (const v of allVersions) {
+                        if (!seen.has(v.version)) {
+                            seen.add(v.version);
+                            uniqueVersions.push(v);
+                        }
+                    }
+
+                    return uniqueVersions.map(ver => {
+                        const dateStr = new Date(ver.created_at).toLocaleString();
+                        let fileUrl = ver.file_url || '';
+                        // Ensure absolute URL
+                        if (fileUrl && !fileUrl.startsWith('http')) {
+                            const baseUrl = window.location.origin.includes('localhost') ? 'http://localhost:5000' : window.location.origin;
+                            fileUrl = `${baseUrl}${fileUrl.startsWith('/') ? '' : '/'}${fileUrl}`;
+                        }
+
+                        return `
+                                                                    <tr style="${ver.isCurrent ? 'background-color: var(--primary-50);' : ''}; border-bottom:1px solid #eee;">
+                                                                        <td style="padding: 8px;">
+                                                                            <span class="badge ${ver.isCurrent ? 'badge-primary' : 'badge-gray'}">v${ver.version}</span>
+                                                                            ${ver.isCurrent ? '<span style="font-size:10px; margin-left:4px; font-weight:bold; color:var(--primary-700)">(Latest)</span>' : ''}
+                                                                        </td>
+                                                                        <td style="padding: 8px; font-size:12px;">${dateStr}</td>
+                                                                        <td style="padding: 8px; font-size:12px;">${ver.file_original_name || 'N/A'}</td>
+                                                                        <td style="padding: 8px;">
+                                                                            ${fileUrl ? `
+                                                                            <a href="${fileUrl}" target="_blank" class="btn btn-sm btn-outline" style="padding: 4px 8px; font-size: 11px;">
+                                                                                <i class="fas fa-download"></i> View
+                                                                            </a>` : 'N/A'}
+                                                                        </td>
+                                                                    </tr>
+                                                                `;
+                    }).join('');
+                })()}
+                                                    </tbody>
+                                                </table>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -3414,20 +3487,31 @@ class DomasApp {
 
 
     switchTab(event, tabName) {
-        // Update tab buttons
-        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-        event.target.classList.add('active');
+        // Hide all tab contents
+        document.querySelectorAll('.tab-content').forEach(content => {
+            if (content) content.style.display = 'none';
+        });
 
-        // Toggle content
-        const detailsTab = document.getElementById('detailsTab');
-        const workflowTab = document.getElementById('workflowTab');
+        // Show selected content
+        const selectedTab = document.getElementById(tabName + 'Tab');
+        if (selectedTab) selectedTab.style.display = 'block';
 
-        if (tabName === 'details') {
-            if (detailsTab) detailsTab.style.display = 'block';
-            if (workflowTab) workflowTab.style.display = 'none';
-        } else {
-            if (detailsTab) detailsTab.style.display = 'none';
-            if (workflowTab) workflowTab.style.display = 'block';
+        // Update Buttons
+        const buttons = document.querySelectorAll('.modal .tab-btn');
+        if (buttons.length > 0) {
+            buttons.forEach(btn => btn.classList.remove('active'));
+
+            if (event && event.target && event.target.classList.contains('tab-btn')) {
+                event.target.classList.add('active');
+            } else {
+                // heuristic to find the button
+                buttons.forEach(btn => {
+                    const onclick = btn.getAttribute('onclick');
+                    if (onclick && onclick.includes(`'${tabName}'`)) {
+                        btn.classList.add('active');
+                    }
+                });
+            }
         }
     }
 
