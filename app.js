@@ -1711,7 +1711,7 @@ class DomasApp {
         const user = this.allUsers.find(u => u.id === userId);
         if (!user) return;
 
-        if (!confirm(`Are you sure you want to remove ${user.name} from the team? This action cannot be undone.`)) {
+        if (!await this.showConfirmModal('Remove Member', `Are you sure you want to remove ${user.name} from the team? This action cannot be undone.`, 'Remove', 'Cancel', 'error')) {
             return;
         }
 
@@ -2479,7 +2479,7 @@ class DomasApp {
     }
 
     async deleteCategory(id) {
-        if (!confirm('Are you sure you want to delete this category?')) return;
+        if (!await this.showConfirmModal('Delete Category', 'Are you sure you want to delete this category?', 'Delete', 'Cancel', 'error')) return;
 
         try {
             await API.deleteCategory(id);
@@ -3493,7 +3493,7 @@ class DomasApp {
         console.log('[Edit] Selected reviewers:', reviewers);
 
         if (reviewers.length === 0) {
-            if (!confirm('You have no reviewers selected. This document will not have an approval team. Continue?')) {
+            if (!await this.showConfirmModal('No Reviewers Selected', 'You have no reviewers selected. This document will not have an approval team. Continue?', 'Continue', 'Cancel', 'warning')) {
                 return;
             }
         }
@@ -3539,7 +3539,7 @@ class DomasApp {
     }
 
     async deleteDocument(docId) {
-        if (!confirm('Are you sure you want to delete this document? This action cannot be undone.')) {
+        if (!await this.showConfirmModal('Delete Document', 'Are you sure you want to delete this document? This action cannot be undone.', 'Delete', 'Cancel', 'error')) {
             return;
         }
 
@@ -3902,7 +3902,7 @@ class DomasApp {
     }
 
     async deleteProject(projectId) {
-        if (!confirm('Are you sure you want to delete this project? This will NOT delete the actual documents, but they will no longer be associated with this project.')) {
+        if (!await this.showConfirmModal('Delete Project', 'Are you sure you want to delete this project? This will NOT delete the actual documents, but they will no longer be associated with this project.', 'Delete', 'Cancel', 'error')) {
             return;
         }
 
@@ -3937,7 +3937,7 @@ class DomasApp {
 
     // Unified workflow action handlers
     async approveWorkflow(docId, workflowId) {
-        const note = prompt('Add a note (optional):', 'Approved');
+        const note = await this.showPromptModal('Add Approval Note', 'Optional note...', 'Approved');
         if (note === null) return;
 
         try {
@@ -3956,7 +3956,7 @@ class DomasApp {
     }
 
     async rejectWorkflow(docId, workflowId) {
-        const note = prompt('Reason for rejection (required):');
+        const note = await this.showPromptModal('Rejection Reason', 'Reason for rejection (required)...', '', 'textarea');
         if (!note) return;
 
         try {
@@ -3975,7 +3975,7 @@ class DomasApp {
     }
 
     async requestWorkflowChanges(docId, workflowId) {
-        const note = prompt('Details of changes requested (required):');
+        const note = await this.showPromptModal('Request Changes', 'Details of changes requested (required)...', '', 'textarea');
         if (!note) return;
 
         try {
@@ -3996,6 +3996,106 @@ class DomasApp {
     // ========================================
     // UTILITIES
     // ========================================
+
+
+    showConfirmModal(title, message, confirmText = 'Confirm', cancelText = 'Cancel', type = 'warning') {
+        return new Promise((resolve) => {
+            const existing = document.getElementById('customConfirmModal');
+            if (existing) existing.remove();
+
+            const modalHtml = `
+                <div class="modal-overlay" id="customConfirmModal" style="display: flex; justify-content: center; align-items: center; z-index: 10000;">
+                    <div class="modal" style="background: white; border-radius: var(--radius-lg); padding: var(--spacing-xl); width: 100%; max-width: 400px; box-shadow: var(--shadow-xl); animation: modalSlideIn 0.3s ease-out;">
+                        <div style="text-align: center; margin-bottom: var(--spacing-lg);">
+                            <div style="width: 60px; height: 60px; background: var(--${type === 'error' ? 'error' : 'warning'}-50); color: var(--${type === 'error' ? 'error' : 'warning'}-500); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto var(--spacing-md); font-size: 24px;">
+                                <i class="fas fa-${type === 'error' ? 'trash-alt' : 'exclamation-triangle'}"></i>
+                            </div>
+                            <h3 style="font-size: var(--font-size-lg); font-weight: 700; color: var(--gray-900); margin-bottom: var(--spacing-xs);">${title}</h3>
+                            <p style="font-size: var(--font-size-sm); color: var(--gray-600); line-height: 1.5;">${message}</p>
+                        </div>
+                        <div style="display: flex; gap: var(--spacing-md);">
+                            <button id="modalConfirmCancel" class="btn btn-outline" style="flex: 1;">${cancelText}</button>
+                            <button id="modalConfirmOk" class="btn btn-${type === 'error' ? 'danger' : 'primary'}" style="flex: 1;">${confirmText}</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            const wrapper = document.createElement('div');
+            wrapper.innerHTML = modalHtml;
+            document.body.appendChild(wrapper.firstElementChild);
+
+            const modal = document.getElementById('customConfirmModal');
+            const cancelBtn = document.getElementById('modalConfirmCancel');
+            const okBtn = document.getElementById('modalConfirmOk');
+
+            const close = (result) => {
+                modal.style.opacity = '0';
+                setTimeout(() => modal.remove(), 200);
+                resolve(result);
+            };
+
+            cancelBtn.onclick = () => close(false);
+            okBtn.onclick = () => close(true);
+            modal.onclick = (e) => {
+                if (e.target === modal) close(false);
+            };
+        });
+    }
+
+    showPromptModal(title, placeholder = '', defaultValue = '', type = 'input') {
+        return new Promise((resolve) => {
+            const existing = document.getElementById('customPromptModal');
+            if (existing) existing.remove();
+
+            const modalHtml = `
+                <div class="modal-overlay" id="customPromptModal" style="display: flex; justify-content: center; align-items: center; z-index: 10000;">
+                    <div class="modal" style="background: white; border-radius: var(--radius-lg); padding: var(--spacing-xl); width: 100%; max-width: 400px; box-shadow: var(--shadow-xl); animation: modalSlideIn 0.3s ease-out;">
+                        <h3 style="font-size: var(--font-size-lg); font-weight: 700; color: var(--gray-900); margin-bottom: var(--spacing-md);">${title}</h3>
+                        <div class="form-group" style="margin-bottom: var(--spacing-lg);">
+                            ${type === 'textarea'
+                    ? `<textarea id="promptInput" class="form-input" rows="3" placeholder="${placeholder}" style="width: 100%; resize: vertical;">${defaultValue}</textarea>`
+                    : `<input type="text" id="promptInput" class="form-input" value="${defaultValue}" placeholder="${placeholder}" style="width: 100%;">`
+                }
+                        </div>
+                        <div style="display: flex; gap: var(--spacing-md);">
+                            <button id="modalPromptCancel" class="btn btn-outline" style="flex: 1;">Cancel</button>
+                            <button id="modalPromptOk" class="btn btn-primary" style="flex: 1;">Submit</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            const wrapper = document.createElement('div');
+            wrapper.innerHTML = modalHtml;
+            document.body.appendChild(wrapper.firstElementChild);
+
+            const modal = document.getElementById('customPromptModal');
+            const input = document.getElementById('promptInput');
+            const cancelBtn = document.getElementById('modalPromptCancel');
+            const okBtn = document.getElementById('modalPromptOk');
+
+            input.focus();
+
+            const close = (val) => {
+                modal.style.opacity = '0';
+                setTimeout(() => modal.remove(), 200);
+                resolve(val);
+            };
+
+            cancelBtn.onclick = () => close(null);
+            okBtn.onclick = () => close(input.value);
+
+            if (type !== 'textarea') {
+                input.onkeydown = (e) => {
+                    if (e.key === 'Enter') close(input.value);
+                };
+            }
+            modal.onclick = (e) => {
+                if (e.target === modal) close(null);
+            };
+        });
+    }
 
     showToast(type, title, message) {
         const toast = document.createElement('div');
@@ -4239,7 +4339,7 @@ class DomasApp {
     }
 
     async deleteNotification(id) {
-        if (!confirm('Are you sure you want to delete this notification?')) return;
+        if (!await this.showConfirmModal('Delete Notification', 'Are you sure you want to delete this notification?', 'Delete', 'Cancel', 'error')) return;
         try {
             await API.deleteNotification(id);
             this.updateNotificationBadge();
