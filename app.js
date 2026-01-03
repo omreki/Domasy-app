@@ -2381,7 +2381,7 @@ class DomasApp {
             projects = (projectsRes.data.projects || []).sort((a, b) => a.name.localeCompare(b.name));
             categories = (categoriesRes.data.categories || []).map(c => c.name);
             if (categories.length === 0) categories = ['General'];
-            users = (usersRes.data.users || []).filter(u => u.role !== 'Viewer'); // Only approvers/editors
+            users = (usersRes.data.users || []); // Show all users
         } catch (error) {
             console.error('Failed to load data', error);
             // Fallback
@@ -2973,7 +2973,7 @@ class DomasApp {
 
             const projects = projectsRes.data.projects || [];
             const categories = (categoriesRes.data.categories || []).map(c => c.name);
-            const users = (usersRes.data.users || []).filter(u => u.role !== 'Viewer');
+            const users = (usersRes.data.users || []);
 
             // Determine current reviewers from workflow
             const currentReviewerIds = new Set();
