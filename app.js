@@ -3239,8 +3239,8 @@ class DomasApp {
                                         </div>
 
                                         <!-- History Tab -->
-                                        <div id="historyTab" class="tab-content" style="padding: var(--spacing-lg); display: none;">
-                                            <div class="table-container">
+                                        <div id="historyTab" class="tab-content" style="padding: 0; display: none;">
+                                            <div class="table-container" style="border-top: none;">
                                                 <table class="data-table" style="width: 100%;">
                                                     <thead>
                                                         <tr>
