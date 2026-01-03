@@ -15,6 +15,17 @@ const supabase = createClient(supabaseUrl, supabaseKey, {
     }
 });
 
+// Diagnostic check (Masked)
+if (supabaseKey) {
+    console.log(`[Supabase] Client initialized with key starting with: ${supabaseKey.substring(0, 10)}...`);
+    // Check if it's a service role key (contains service_role in JWT)
+    if (supabaseKey.includes('service_role') || supabaseKey.length > 100) {
+        console.log('[Supabase] Using Service Role Key (should bypass RLS)');
+    } else {
+        console.warn('[Supabase] Warning: Key does not look like a Service Role Key. Storage uploads may fail due to RLS.');
+    }
+}
+
 // Initialize storage buckets (Exported to be called manually if needed)
 const initBuckets = async () => {
     try {
@@ -35,6 +46,13 @@ const initBuckets = async () => {
         console.warn('Storage bucket initialization failed (check permissions):', err.message);
     }
 };
+
+// Auto-initialize buckets on startup
+initBuckets().then(() => {
+    console.log('[Supabase] Storage buckets initialized');
+}).catch(err => {
+    console.error('[Supabase] Bucket initialization failed:', err);
+});
 
 module.exports = supabase;
 module.exports.initBuckets = initBuckets;
