@@ -29,27 +29,27 @@
             </div>
 
             <nav class="sidebar-nav">
-                <a href="#dashboard" class="nav-item active" data-page="dashboard">
+                <a href="#dashboard" class="nav-item active" data-page="dashboard" data-role="all">
                     <i class="fas fa-th-large"></i>
                     <span>Dashboard</span>
                 </a>
-                <a href="#documents" class="nav-item" data-page="documents">
+                <a href="#documents" class="nav-item" data-page="documents" data-role="all">
                     <i class="fas fa-file-alt"></i>
                     <span>Documents</span>
                 </a>
-                <a href="#projects" class="nav-item" data-page="projects">
+                <a href="#projects" class="nav-item" data-page="projects" data-role="all">
                     <i class="fas fa-folder"></i>
                     <span>Projects</span>
                 </a>
-                <a href="#team" class="nav-item" data-page="team">
+                <a href="#team" class="nav-item" data-page="team" data-role="all">
                     <i class="fas fa-users"></i>
                     <span>Team</span>
                 </a>
-                <a href="#audit-log" class="nav-item" data-page="audit-log">
+                <a href="#audit-log" class="nav-item" data-page="audit-log" data-role="admin">
                     <i class="fas fa-clipboard-list"></i>
                     <span>Audit Logs</span>
                 </a>
-                <a href="#settings" class="nav-item" data-page="settings">
+                <a href="#settings" class="nav-item" data-page="settings" data-role="admin">
                     <i class="fas fa-cog"></i>
                     <span>Settings</span>
                 </a>
@@ -69,7 +69,7 @@
                     <!-- Sidebar dropdown -->
                     <div id="sidebarUserDropdown" class="dropdown-menu"
                         style="display: none; position: absolute; bottom: 120%; left: 0; background: white; border: 1px solid var(--gray-200); border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); width: 100%; z-index: 100; min-width: 200px;">
-                        <a href="#" class="dropdown-item" onclick="app.navigateTo('settings')"
+                        <a href="#" class="dropdown-item" data-role="admin" onclick="app.navigateTo('settings')"
                             style="display: block; padding: 10px 15px; color: var(--gray-700); text-decoration: none; border-bottom: 1px solid var(--gray-100);">
                             <i class="fas fa-user-circle" style="margin-right: 8px;"></i> Profile
                         </a>
@@ -110,7 +110,7 @@
                         <img src="https://ui-avatars.com/api/?name=User&background=random" alt="User"
                             id="headerUserAvatarImg">
                         <div id="userDropdown" class="dropdown-menu">
-                            <a href="#" class="dropdown-item" onclick="app.navigateTo('settings')">
+                            <a href="#" class="dropdown-item" data-role="admin" onclick="app.navigateTo('settings')">
                                 <i class="fas fa-user-circle"></i> Profile
                             </a>
                             <a href="#" class="dropdown-item text-danger" onclick="app.logout()">

@@ -431,61 +431,51 @@ class DomasApp {
         const adminRoles = ['Super Admin', 'Admin'];
         const isAdmin = adminRoles.some(role => this.currentUser.role.includes(role));
 
-        const body = document.body;
-
-        if (!isAdmin) {
-            // Enable Top Nav Layout
-            body.classList.add('layout-top-nav');
-            const sidebar = document.querySelector('.sidebar');
-            if (sidebar) sidebar.style.display = 'none'; // Force Inline hide
-
-            // Hide breadcrumb for top-nav layout to save space
-            const breadcrumb = document.getElementById('breadcrumb');
-            if (breadcrumb) breadcrumb.style.display = 'none';
-
-            // Inject Top Nav Links and Logo if not already present
-            if (!document.getElementById('topNav')) {
-                const headerLeft = document.querySelector('.header-left');
-                if (headerLeft) {
-                    // Create Logo Container
-                    const logoContainer = document.createElement('div');
-                    logoContainer.className = 'logo header-logo';
-                    logoContainer.innerHTML = `
-                        <i class="fas fa-shield-alt"></i>
-                        <span class="logo-text">Domasy</span>
-                    `;
-                    headerLeft.prepend(logoContainer);
-
-                    const navContainer = document.createElement('div');
-                    navContainer.id = 'topNav';
-                    navContainer.className = 'top-nav-links';
-                    navContainer.innerHTML = `
-                        <a href="#" class="top-nav-item active" data-page="dashboard" onclick="app.handleTopNavClick(event, 'dashboard')">Dashboard</a>
-                        <a href="#" class="top-nav-item" data-page="documents" onclick="app.handleTopNavClick(event, 'documents')">Documents</a>
-                        <a href="#" class="top-nav-item" data-page="projects" onclick="app.handleTopNavClick(event, 'projects')">Projects</a>
-                        <a href="#" class="top-nav-item" data-page="team" onclick="app.handleTopNavClick(event, 'team')">Team</a>
-                    `;
-                    headerLeft.appendChild(navContainer);
-                }
-            }
-
-            // Re-trigger branding UI after injecting new logo container
-            this.updateBrandingUI();
-        } else {
-            // Ensure standard layout
-            body.classList.remove('layout-top-nav');
-            const topNav = document.getElementById('topNav');
-            if (topNav) topNav.remove();
-
-            const headerLogo = document.querySelector('.header-logo');
-            if (headerLogo) headerLogo.remove();
-
-            const breadcrumb = document.getElementById('breadcrumb');
-            if (breadcrumb) breadcrumb.style.display = '';
-
-            const sidebar = document.querySelector('.sidebar');
-            if (sidebar) sidebar.style.display = ''; // Reset
+        // Always show the sidebar for all users
+        const sidebar = document.querySelector('.sidebar');
+        if (sidebar) {
+            sidebar.style.display = ''; // Ensure sidebar is visible
         }
+
+        // Filter sidebar menu items based on role
+        const sidebarNavItems = document.querySelectorAll('.sidebar .nav-item');
+        sidebarNavItems.forEach(item => {
+            const requiredRole = item.dataset.role;
+
+            // If item requires admin role and user is not admin, hide it
+            if (requiredRole === 'admin' && !isAdmin) {
+                item.style.display = 'none';
+            } else {
+                item.style.display = ''; // Show the item
+            }
+        });
+
+        // Filter dropdown menu items based on role (both sidebar and header dropdowns)
+        const dropdownItems = document.querySelectorAll('.dropdown-item');
+        dropdownItems.forEach(item => {
+            const requiredRole = item.dataset.role;
+
+            // If item requires admin role and user is not admin, hide it
+            if (requiredRole === 'admin' && !isAdmin) {
+                item.style.display = 'none';
+            } else {
+                item.style.display = ''; // Show the item
+            }
+        });
+
+        // Remove any top-nav layout classes and elements (legacy from non-admin setup)
+        const body = document.body;
+        body.classList.remove('layout-top-nav');
+
+        const topNav = document.getElementById('topNav');
+        if (topNav) topNav.remove();
+
+        const headerLogo = document.querySelector('.header-logo');
+        if (headerLogo) headerLogo.remove();
+
+        // Ensure breadcrumb is visible
+        const breadcrumb = document.getElementById('breadcrumb');
+        if (breadcrumb) breadcrumb.style.display = '';
     }
 
     handleTopNavClick(e, page) {
@@ -500,8 +490,8 @@ class DomasApp {
         // Role-based Access Control
         const adminRoles = ['Super Admin', 'Admin'];
         const isAdmin = this.currentUser && adminRoles.some(role => this.currentUser.role.includes(role));
-        // Team is View Only for non-admins, but still accessible. Audit is blocked.
-        const restrictedPages = ['audit-log'];
+        // Team is View Only for non-admins, but still accessible. Audit and Settings are admin-only.
+        const restrictedPages = ['audit-log', 'settings'];
 
         if (!isAdmin && restrictedPages.includes(page)) {
             // Redirect non-admins to dashboard if they try to access restricted pages
