@@ -757,17 +757,20 @@ class DomasApp {
         const dateStr = createdAt ? new Date(createdAt).toLocaleDateString() : 'Unknown';
         const fileSize = (rawFileSize / 1024 / 1024).toFixed(2) + ' MB';
 
-        // Team Avatars stack
+        // Team Avatars stack (Enhanced)
         const teamStack = teamMembers.length > 0 ? `
-            <div class="avatar-stack" style="margin-left: var(--spacing-md); display: flex; align-items:center;">
-                ${teamMembers.slice(0, 3).map(m => `
-                    <div title="${m.name}" style="margin-left: -8px; border: 2px solid white; border-radius: 50%; overflow: hidden; width: 24px; height: 24px;">
-                         <img src="${m.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(m.name)}" 
-                              style="width:100%; height:100%; object-fit:cover;" 
-                              alt="${m.name}">
-                    </div>
-                `).join('')}
-                ${teamMembers.length > 3 ? `<span style="font-size: 10px; color: var(--gray-500); margin-left: 4px;">+${teamMembers.length - 3}</span>` : ''}
+            <div class="team-preview" style="margin-left: var(--spacing-md); display: flex; align-items: center; gap: 8px; padding: 4px 8px; background: var(--gray-50); border-radius: var(--radius-full); border: 1px solid var(--gray-100);">
+                <span style="font-size: 9px; font-weight: 800; color: var(--gray-400); text-transform: uppercase; letter-spacing: 0.5px;">Team</span>
+                <div class="avatar-stack" style="display: flex; align-items:center;">
+                    ${teamMembers.slice(0, 3).map(m => `
+                        <div title="${m.name}" style="margin-left: -8px; border: 2px solid white; border-radius: 50%; overflow: hidden; width: 24px; height: 24px; box-shadow: var(--shadow-sm);">
+                             <img src="${m.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(m.name)}" 
+                                  style="width:100%; height:100%; object-fit:cover;" 
+                                  alt="${m.name}">
+                        </div>
+                    `).join('')}
+                    ${teamMembers.length > 3 ? `<span style="font-size: 10px; color: var(--gray-500); margin-left: 4px; font-weight: 600;">+${teamMembers.length - 3}</span>` : ''}
+                </div>
             </div>
         ` : '';
 
@@ -918,18 +921,22 @@ class DomasApp {
             thumbnail = `${API_URL.replace('/api', '')}${thumbnail.startsWith('/') ? '' : '/'}${thumbnail}`;
         }
 
-        // Team Members HTML
+        // Team Members HTML (Enhanced)
         const teamHtml = teamMembers.length > 0 ? `
-            <div class="document-team" style="display:flex; margin-top:8px; margin-bottom:8px; align-items:center;">
-                <span style="font-size:11px; color:var(--gray-500); margin-right:6px; font-weight:600;">TEAM:</span>
-                <div style="display:flex; align-items:center; flex-wrap:wrap; gap:2px;">
+            <div class="document-team-section" style="margin: 12px 0; padding: 10px; background: var(--gray-50); border-radius: var(--radius-md); border: 1px solid var(--gray-100);">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                    <span style="font-size: 10px; font-weight: 700; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.5px;">Approval Team</span>
+                    <span style="font-size: 10px; color: var(--primary-600); font-weight: 600;">${teamMembers.length} Members</span>
+                </div>
+                <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 4px;">
                     ${teamMembers.map(m => `
-                        <div title="${m.name}" style="transition: transform 0.2s; position:relative; z-index:1;">
-                             <img src="${m.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(m.name)}" 
-                                  style="width:24px;height:24px;border-radius:50%;border:1px solid white; object-fit:cover;" 
-                                  alt="${m.name}">
+                        <div class="team-avatar-wrapper" style="position: relative;" title="${m.name} (${m.role || 'Reviewer'})">
+                            <img src="${m.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(m.name) + '&background=random'}" 
+                                 style="width: 28px; height: 28px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.05); object-fit: cover;" 
+                                 alt="${m.name}">
                         </div>
                     `).join('')}
+                    ${teamMembers.length > 5 ? `<div style="width: 28px; height: 28px; border-radius: 50%; background: var(--gray-200); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600; color: var(--gray-600); border: 2px solid white;">+${teamMembers.length - 5}</div>` : ''}
                 </div>
             </div>
         ` : '';
@@ -3147,19 +3154,57 @@ class DomasApp {
                                                 <div class="property-value">${doc.description || 'No description'}</div>
                                             </div>
                                             
-                                            <!-- Team Members Selection Show -->
-                                            <div style="margin-top: var(--spacing-xl);">
-                                                <h3 style="font-size: var(--font-size-sm); font-weight: 700; margin-bottom: var(--spacing-md); color: var(--gray-700);">APPROVAL TEAM</h3>
+                                            <!-- Team Members Section (Premium Upgrade) -->
+                                            <div style="margin-top: var(--spacing-xl); padding: var(--spacing-md); background: white; border: 1px solid var(--gray-200); border-radius: var(--radius-lg); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+                                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-lg);">
+                                                    <h3 style="font-size: var(--font-size-sm); font-weight: 700; margin: 0; color: var(--gray-800); display: flex; align-items: center; gap: 8px;">
+                                                        <i class="fas fa-users-cog" style="color: var(--primary-500);"></i>
+                                                        APPROVAL TEAM
+                                                    </h3>
+                                                    <span class="badge badge-primary" style="font-size: 10px;">${doc.teamMembers?.length || 0} Assigned</span>
+                                                </div>
+                                                
                                                 <div style="display: flex; flex-direction: column; gap: var(--spacing-sm);">
-                                                    ${doc.teamMembers && doc.teamMembers.length > 0 ? doc.teamMembers.map(m => `
-                                                        <div style="display: flex; align-items: center; gap: var(--spacing-md); padding: var(--spacing-sm); background: var(--gray-50); border-radius: var(--radius-md);">
-                                                            <img src="${m.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(m.name)}" style="width: 32px; height: 32px; border-radius: 50%;">
-                                                            <div style="flex: 1;">
-                                                                <div style="font-weight: 600; font-size: var(--font-size-sm);">${m.name}</div>
-                                                                <div style="font-size: var(--font-size-xs); color: var(--gray-500);">${m.role}</div>
+                                                    ${doc.teamMembers && doc.teamMembers.length > 0 ? doc.teamMembers.map(m => {
+                    // Find the member's status in the workflow if available
+                    const memberStage = workflow?.stages?.find(s => {
+                        const assigneeId = typeof s.assignee === 'object' ? (s.assignee.id || s.assignee._id) : s.assignee;
+                        return String(assigneeId) === String(m.id || m._id);
+                    });
+
+                    let statusBadge = '';
+                    if (memberStage) {
+                        const s = memberStage.status;
+                        const color = s === 'completed' ? 'success' : s === 'current' ? 'info' : s === 'rejected' ? 'error' : 'gray';
+                        statusBadge = `<span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; background: var(--${color}-100); color: var(--${color}-700); font-weight: 600;">${s.toUpperCase()}</span>`;
+                    }
+
+                    return `
+                                                        <div style="display: flex; align-items: center; gap: var(--spacing-md); padding: var(--spacing-md); background: var(--gray-50); border-radius: var(--radius-md); transition: all 0.2s; border: 1px solid transparent;" onmouseover="this.style.borderColor='var(--primary-200)'; this.style.background='white'; this.style.transform='translateY(-1px)';" onmouseout="this.style.borderColor='transparent'; this.style.background='var(--gray-50)'; this.style.transform='none';">
+                                                            <div style="position: relative;">
+                                                                <img src="${m.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(m.name)}" style="width: 40px; height: 40px; border-radius: 50%; border: 2px solid white; box-shadow: var(--shadow-sm); object-fit: cover;">
+                                                                ${memberStage?.status === 'current' ? `
+                                                                    <div style="position: absolute; bottom: 0; right: 0; width: 12px; height: 12px; background: var(--info-500); border: 2px solid white; border-radius: 50%;"></div>
+                                                                ` : ''}
+                                                            </div>
+                                                            <div style="flex: 1; min-width: 0;">
+                                                                <div style="font-weight: 600; font-size: var(--font-size-sm); color: var(--gray-900); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${m.name}</div>
+                                                                <div style="font-size: var(--font-size-xs); color: var(--gray-500); display: flex; align-items: center; gap: 4px;">
+                                                                    ${m.role || 'Reviewer'}
+                                                                    ${statusBadge ? `• ${statusBadge}` : ''}
+                                                                </div>
+                                                            </div>
+                                                            <div style="font-size: 18px; color: var(--gray-300);">
+                                                                <i class="fas fa-chevron-right" style="font-size: 12px;"></i>
                                                             </div>
                                                         </div>
-                                                    `).join('') : '<div style="font-size: var(--font-size-sm); color: var(--gray-500); font-style: italic;">No specific team members assigned.</div>'}
+                                                    `;
+                }).join('') : `
+                                                        <div style="text-align: center; padding: var(--spacing-xl); background: var(--gray-50); border-radius: var(--radius-md); border: 1px dashed var(--gray-300);">
+                                                            <i class="fas fa-user-slash fa-2x" style="color: var(--gray-300); margin-bottom: 8px;"></i>
+                                                            <p style="font-size: var(--font-size-sm); color: var(--gray-500); margin: 0; font-style: italic;">No specific team members assigned.</p>
+                                                        </div>
+                                                    `}
                                                 </div>
                                             </div>
 
