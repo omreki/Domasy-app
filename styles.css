@@ -1472,13 +1472,21 @@ body.layout-top-nav .top-nav-links {
 }
 
 .document-thumbnail {
-    position: relative;
-    aspect-ratio: 21/9;
-    overflow: hidden;
+    position: relative !important;
+    aspect-ratio: 21 / 7 !important;
+    /* Even shorter (approx 1/3 of typical 4/3 or 3/4) */
+    width: 100% !important;
+    overflow: hidden !important;
     background: var(--gray-100);
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+/* Base style for icons in thumbnails */
+.document-thumbnail i {
+    font-size: 2.5rem !important;
+    opacity: 0.8;
 }
 
 /* Document Type Specific Styles */

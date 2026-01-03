@@ -934,13 +934,20 @@ class DomasApp {
             </div>
         ` : '';
 
-        const fileName = (doc.file?.name || doc.title || '').toLowerCase();
+        const fileName = (doc.file?.name || '').toLowerCase();
+        const title = (doc.title || '').toLowerCase();
         const mime = (doc.file?.mimetype || '').toLowerCase();
+
         let type = 'other';
-        if (fileName.endsWith('.pdf') || mime === 'application/pdf') type = 'pdf';
-        else if (fileName.endsWith('.doc') || fileName.endsWith('.docx') || mime.includes('word')) type = 'doc';
-        else if (fileName.endsWith('.png') || mime === 'image/png') type = 'png';
-        else if (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg') || mime === 'image/jpeg') type = 'jpg';
+        if (fileName.endsWith('.pdf') || title.endsWith('.pdf') || mime === 'application/pdf') {
+            type = 'pdf';
+        } else if (fileName.endsWith('.doc') || fileName.endsWith('.docx') || title.endsWith('.doc') || title.endsWith('.docx') || mime.includes('word') || mime.includes('officedocument.word')) {
+            type = 'doc';
+        } else if (fileName.endsWith('.png') || title.endsWith('.png') || mime === 'image/png') {
+            type = 'png';
+        } else if (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg') || title.endsWith('.jpg') || title.endsWith('.jpeg') || mime.includes('jpeg')) {
+            type = 'jpg';
+        }
 
         const typeIcons = {
             'pdf': 'fas fa-file-pdf',
