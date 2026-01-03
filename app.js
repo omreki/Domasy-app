@@ -2788,7 +2788,8 @@ class DomasApp {
         // Collect selected reviewers
         const reviewerCheckboxes = document.querySelectorAll('.doc-reviewer-checkbox:checked');
         const reviewers = Array.from(reviewerCheckboxes).map(cb => cb.value).filter(val => val && val !== 'undefined');
-        console.log('[Upload] Selected Reviewer IDs:', reviewers);
+        console.log('[Upload] Final reviewers to send:', reviewers);
+        if (reviewers.length > 0) console.table(reviewers);
 
         // Debug check
         if (reviewers.length === 0) {
