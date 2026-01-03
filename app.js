@@ -2433,8 +2433,7 @@ class DomasApp {
                                 <!-- Reviewers Section -->
                                 <div class="form-group">
                                     <label class="form-label">
-                                        Assign Reviewers 
-                                        <span style="color: var(--gray-400);">(Optional)</span>
+                                        Assign Reviewers <span style="color:var(--error-500)">*</span>
                                     </label>
                                     <p style="font-size: var(--font-size-xs); color: var(--gray-500); margin-bottom: var(--spacing-sm);">
                                         Select team members who need to review this document
@@ -2518,6 +2517,11 @@ class DomasApp {
         if (reviewers.length === 0) {
             const allCheckboxes = document.querySelectorAll('.doc-reviewer-checkbox');
             console.log('[Upload] No reviewers selected. Total checkboxes found:', allCheckboxes.length);
+        }
+
+        if (reviewers.length === 0) {
+            this.showToast('error', 'Missing Reviewers', 'Please select at least one reviewer.');
+            return;
         }
 
         if (!file) {
