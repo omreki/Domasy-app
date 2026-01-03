@@ -1498,14 +1498,16 @@ class DomasApp {
                     ${lastLoginStr}
                 </td>
                 <td style="text-align: right;">
-                    ${(this.currentUser.role === 'Super Admin' || this.currentUser.role === 'Admin') && user.id !== this.currentUser.id ? `
+                    ${(this.currentUser.role === 'Super Admin' || this.currentUser.role === 'Admin') ? `
                     <div style="display: flex; justify-content: flex-end; gap: var(--spacing-xs);">
-                        <button class="btn-icon" onclick="app.showEditUserModal('${user.id}')" title="Edit Role/Dept">
+                        <button class="btn-icon" onclick="app.showEditUserModal('${user.id}')" title="Edit User">
                             <i class="fas fa-user-edit"></i>
                         </button>
+                        ${user.id !== this.currentUser.id ? `
                         <button class="btn-icon" style="color: var(--error-500);" onclick="app.deleteTeamMember('${user.id}')" title="Remove Member">
                             <i class="fas fa-user-times"></i>
                         </button>
+                        ` : ''}
                     </div>
                     ` : ''}
                 </td>
@@ -1664,6 +1666,14 @@ class DomasApp {
                     </div>
                     <div class="modal-body">
                         <div class="form-group">
+                            <label class="form-label">Full Name</label>
+                            <input type="text" id="editUserName" class="form-input" value="${user.name || ''}">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Email Address</label>
+                            <input type="email" id="editUserEmail" class="form-input" value="${user.email || ''}">
+                        </div>
+                        <div class="form-group">
                             <label class="form-label">Department</label>
                             <input type="text" id="editUserDept" class="form-input" value="${user.department || ''}">
                         </div>
@@ -1693,6 +1703,8 @@ class DomasApp {
     }
 
     async saveEditedUser(userId) {
+        const name = document.getElementById('editUserName').value;
+        const email = document.getElementById('editUserEmail').value;
         const department = document.getElementById('editUserDept').value;
         const role = document.getElementById('editUserRole').value;
         const status = document.getElementById('editUserStatus').value;
@@ -1703,7 +1715,7 @@ class DomasApp {
         btn.disabled = true;
 
         try {
-            await API.updateUser(userId, { department, role, status });
+            await API.updateUser(userId, { name, email, department, role, status });
             this.showToast('success', 'User Updated', 'User details have been updated.');
             this.closeModal();
 

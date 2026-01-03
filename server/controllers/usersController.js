@@ -31,14 +31,14 @@ exports.getUsers = async (req, res) => {
 // @access  Private
 exports.updateUser = async (req, res) => {
     try {
-        const { role, status, department } = req.body;
+        const { role, status, department, name, email } = req.body;
 
         const existingUser = await UserService.findById(req.params.id);
         if (!existingUser) {
             return res.status(404).json({ success: false, message: 'User not found' });
         }
 
-        const updatedUser = await UserService.update(req.params.id, { role, status, department });
+        const updatedUser = await UserService.update(req.params.id, { role, status, department, name, email });
 
         await AuditLogService.create({
             user: req.user.id,
