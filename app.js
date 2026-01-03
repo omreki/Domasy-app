@@ -2885,7 +2885,7 @@ class DomasApp {
                             </div>
                         </div>
                         <div class="modal-body" style="padding: 0;">
-                            <div style="display: grid; grid-template-columns: 1fr 400px; min-height: 600px;">
+                            <div style="display: grid; grid-template-columns: 1fr 320px; min-height: 600px;">
                                 <!-- Document Viewer -->
                                 <div style="background: var(--gray-100); display: flex; align-items: center; justify-content: center; padding: var(--spacing-xl); position: relative; overflow: hidden;">
                                     
