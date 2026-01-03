@@ -3210,17 +3210,23 @@ class DomasApp {
                     return `
                                                     <div style="margin-top: var(--spacing-lg); border-top: 1px solid var(--gray-100); padding-top: var(--spacing-lg);">
                                                         <h4 style="font-size: var(--font-size-sm); margin-bottom: var(--spacing-md);">YOUR ACTION REQUIRED</h4>
-                                                        <button class="btn btn-primary" onclick="app.approveWorkflow('${docId}', '${workflow.id}')" style="width: 100%; margin-bottom: var(--spacing-sm);">
+                                                        
+                                                        <div style="margin-bottom: var(--spacing-md);">
+                                                            <label style="display: block; font-size: 11px; font-weight: 600; color: var(--gray-500); margin-bottom: 4px;">Comments / Notes</label>
+                                                            <textarea id="workflowCommentBox" class="form-textarea" rows="3" placeholder="Type your comments here..." style="width: 100%; resize: vertical; padding: 8px; border: 1px solid var(--gray-300); border-radius: var(--radius-md);"></textarea>
+                                                        </div>
+
+                                                        <button class="btn btn-outline" onclick="app.submitWorkflowAction('${docId}', '${workflow.id}', 'request_changes')" style="width: 100%; margin-bottom: var(--spacing-sm); justify-content: center;">
+                                                            <i class="fas fa-edit"></i> Request Revision
+                                                        </button>
+
+                                                        <button class="btn btn-primary" onclick="app.submitWorkflowAction('${docId}', '${workflow.id}', 'approve')" style="width: 100%; margin-bottom: var(--spacing-sm); justify-content: center;">
                                                             <i class="fas fa-check"></i> Approve Document
                                                         </button>
-                                                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-sm);">
-                                                            <button class="btn btn-outline" onclick="app.requestWorkflowChanges('${docId}', '${workflow.id}')">
-                                                                <i class="fas fa-edit"></i> Revision
-                                                            </button>
-                                                            <button class="btn btn-outline" style="color: var(--error-600); border-color: var(--error-200);" onclick="app.rejectWorkflow('${docId}', '${workflow.id}')">
-                                                                <i class="fas fa-times"></i> Reject
-                                                            </button>
-                                                        </div>
+
+                                                        <button class="btn btn-outline" style="width: 100%; color: var(--error-600); border-color: var(--error-200); justify-content: center;" onclick="app.submitWorkflowAction('${docId}', '${workflow.id}', 'reject')">
+                                                            <i class="fas fa-times"></i> Reject Document
+                                                        </button>
                                                     </div>
                                                     `;
                 })()}
@@ -3974,13 +3980,31 @@ class DomasApp {
         }
     }
 
-    async requestWorkflowChanges(docId, workflowId) {
-        const note = await this.showPromptModal('Request Changes', 'Details of changes requested (required)...', '', 'textarea');
-        if (!note) return;
+    async submitWorkflowAction(docId, workflowId, action) {
+        const commentBox = document.getElementById('workflowCommentBox');
+        const note = commentBox ? commentBox.value.trim() : '';
+
+        // Validation
+        if ((action === 'reject' || action === 'request_changes') && !note) {
+            this.showToast('error', 'Missing Comment', 'Please provide a reason or comment for this action.');
+            if (commentBox) commentBox.focus();
+            return;
+        }
+
+        const finalNote = note || (action === 'approve' ? 'Approved' : '');
 
         try {
-            await API.requestWorkflowChanges(workflowId, note);
-            this.showToast('warning', 'Changes Requested', 'Changes have been requested');
+            if (action === 'approve') {
+                await API.approveWorkflowStage(workflowId, finalNote);
+                this.showToast('success', 'Approved', 'Workflow stage approved successfully');
+            } else if (action === 'reject') {
+                await API.rejectWorkflowStage(workflowId, finalNote);
+                this.showToast('success', 'Rejected', 'Document has been rejected');
+            } else if (action === 'request_changes') {
+                await API.requestWorkflowChanges(workflowId, finalNote);
+                this.showToast('warning', 'Changes Requested', 'Changes have been requested');
+            }
+
             this.closeModal();
             // Refresh main view
             if (this.currentPage === 'documents') {
