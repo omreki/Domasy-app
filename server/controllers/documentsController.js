@@ -142,30 +142,34 @@ exports.uploadDocument = async (req, res) => {
 
         console.log('[Upload] Full req.body:', JSON.stringify(req.body));
 
-        // Parse Reviewers properly - support various formats
+        // Parse Reviewers properly - support various formats: array, JSON string, or multiple 'reviewers[]' fields
         let reviewerIds = [];
-        if (reviewers) {
-            try {
-                if (typeof reviewers === 'string') {
-                    reviewerIds = JSON.parse(reviewers);
-                } else if (Array.isArray(reviewers)) {
-                    reviewerIds = reviewers;
-                }
-            } catch (e) {
-                if (typeof reviewers === 'string' && reviewers.trim()) {
-                    reviewerIds = [reviewers];
+        const rawReviewers = reviewers || req.body['reviewers[]'] || req.body.reviewer || req.body.approver;
+
+        if (rawReviewers) {
+            if (Array.isArray(rawReviewers)) {
+                reviewerIds = rawReviewers;
+            } else if (typeof rawReviewers === 'string') {
+                try {
+                    reviewerIds = JSON.parse(rawReviewers);
+                } catch (e) {
+                    // Split by comma if it's a comma-separated string, otherwise treat as single ID
+                    if (rawReviewers.includes(',')) {
+                        reviewerIds = rawReviewers.split(',').map(s => s.trim());
+                    } else {
+                        reviewerIds = [rawReviewers.trim()];
+                    }
                 }
             }
-        } else if (req.body['reviewers[]']) {
-            reviewerIds = Array.isArray(req.body['reviewers[]']) ? req.body['reviewers[]'] : [req.body['reviewers[]']];
         }
 
-        // Final normalization: Array of non-empty strings
-        reviewerIds = (Array.isArray(reviewerIds) ? reviewerIds : [reviewerIds])
+        // Final normalization: Unique array of non-empty strings
+        reviewerIds = [...new Set((Array.isArray(reviewerIds) ? reviewerIds : [reviewerIds])
+            .map(id => id && typeof id === 'object' ? (id.id || id._id || id) : id)
             .map(id => (id !== null && id !== undefined) ? String(id).trim() : '')
-            .filter(id => id !== '' && id !== 'undefined' && id !== 'null');
+            .filter(id => id !== '' && id !== 'undefined' && id !== 'null'))];
 
-        console.log(`[Upload] Processed ${reviewerIds.length} reviewer IDs:`, reviewerIds);
+        console.log(`[Upload] Final Normalized Reviewer IDs (${reviewerIds.length}):`, reviewerIds);
 
         // Generate thumbnail for PDF
         let thumbnail = null;

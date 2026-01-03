@@ -2826,9 +2826,12 @@ class DomasApp {
         formData.append('category', category);
         formData.append('project', project);
 
-        // Append reviewers as JSON string
-        console.log('[Upload] Selected Reviewers count:', reviewers.length);
+        // Append reviewers
         if (reviewers.length > 0) {
+            reviewers.forEach(id => {
+                formData.append('reviewers[]', id);
+            });
+            // Also keep JSON version for backward compatibility or direct API use
             formData.append('reviewers', JSON.stringify(reviewers));
         }
 
