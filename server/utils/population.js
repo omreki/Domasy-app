@@ -49,9 +49,22 @@ const populateTeamMembers = async (documents) => {
         return documents.map((doc, index) => {
             const wf = workflows[index];
             let teamMembers = [];
+            const docId = doc.id || doc._id;
+
             if (wf && wf.stages) {
-                const uniqueIds = [...new Set(wf.stages.map(s => s.assignee).filter(id => id))];
+                // Ensure we handle stage.assignee as a string ID
+                const uniqueIds = [...new Set(wf.stages.map(s => {
+                    const assignee = s.assignee;
+                    return (assignee && typeof assignee === 'object') ? (assignee.id || assignee._id) : assignee;
+                }).filter(id => id))];
+
                 teamMembers = uniqueIds.map(uid => teamUsersMap[uid]).filter(u => u);
+
+                if (teamMembers.length > 0) {
+                    console.log(`[Population] Found ${teamMembers.length} team members for doc ${docId}`);
+                }
+            } else {
+                if (docId) console.log(`[Population] No workflow found for doc ${docId}`);
             }
             return { ...doc, teamMembers };
         });

@@ -139,22 +139,31 @@ exports.uploadDocument = async (req, res) => {
         const finalCategory = category || tags || 'General';
         const finalTags = Array.isArray(tags) ? tags : (tags ? [tags] : [finalCategory]);
 
-        // Parse reviewers if provided as JSON string
+        // Parse reviewers if provided as JSON string or array
         let reviewerIds = [];
+        console.log('[Upload] Received reviewers field:', typeof reviewers, reviewers);
+
         if (reviewers) {
-            try {
-                reviewerIds = JSON.parse(reviewers);
-            } catch (e) {
-                // If not JSON, treat as single ID or ignore
-                if (typeof reviewers === 'string' && reviewers.trim()) {
-                    reviewerIds = [reviewers];
+            if (Array.isArray(reviewers)) {
+                reviewerIds = reviewers;
+            } else {
+                try {
+                    reviewerIds = JSON.parse(reviewers);
+                } catch (e) {
+                    if (typeof reviewers === 'string' && reviewers.trim()) {
+                        reviewerIds = [reviewers];
+                    }
                 }
             }
         }
 
+        // Ensure reviewerIds is an array of strings
+        reviewerIds = Array.isArray(reviewerIds) ? reviewerIds : (reviewerIds ? [reviewerIds] : []);
+        console.log('[Upload] Final parsed reviewerIds:', reviewerIds);
+
         // Generate thumbnail for PDF
         let thumbnail = null;
-        if (req.file.mimetype === 'application/pdf') {
+        if (req.file && req.file.mimetype === 'application/pdf') {
             thumbnail = await generateThumbnail(req.file);
         }
 
@@ -172,6 +181,7 @@ exports.uploadDocument = async (req, res) => {
         };
 
         const document = await DocumentService.create(docData, req.file);
+        console.log('[Upload] Document created with ID:', document.id);
 
         // Create approval workflow with reviewer stages
         const workflowStages = [
@@ -212,12 +222,16 @@ exports.uploadDocument = async (req, res) => {
             });
         }
 
-        await ApprovalWorkflowService.create({
+        console.log('[Upload] Creating workflow with stages count:', workflowStages.length, 'for doc:', document.id);
+
+        const workflow = await ApprovalWorkflowService.create({
             document: document.id,
             stages: workflowStages,
-            currentStageIndex: reviewerIds.length > 0 ? 1 : 1, // Start at first review stage
+            currentStageIndex: 1, // Start at first review stage
             overallStatus: 'In Progress'
         });
+
+        console.log('[Upload] Workflow created with ID:', workflow.id);
 
         await AuditLogService.create({
             user: req.user.id,

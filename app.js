@@ -2528,9 +2528,11 @@ class DomasApp {
         formData.append('title', title);
         formData.append('description', description);
         formData.append('tags', category);
+        formData.append('category', category); // Send both to be safe
         formData.append('project', project);
 
         // Append reviewers as JSON string
+        console.log('[Upload] Selected Reviewers:', reviewers);
         if (reviewers.length > 0) {
             formData.append('reviewers', JSON.stringify(reviewers));
         }
@@ -2542,7 +2544,8 @@ class DomasApp {
         btn.disabled = true;
 
         try {
-            await API.uploadDocument(formData);
+            const result = await API.uploadDocument(formData);
+            console.log('[Upload] Success:', result);
             this.showToast('success', 'Document Uploaded', 'Your document has been uploaded successfully.');
             this.closeModal();
             // Refresh dashboard or documents list
