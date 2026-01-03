@@ -31,10 +31,14 @@ const populateTeamMembers = async (documents) => {
             workflowsByDocId[wf.document_id] = wf;
             if (wf.stages && Array.isArray(wf.stages)) {
                 wf.stages.forEach(stage => {
-                    const assigneeId = (stage.assignee && typeof stage.assignee === 'object')
-                        ? (stage.assignee.id || stage.assignee._id)
-                        : stage.assignee;
-                    if (assigneeId) allUserIds.add(String(assigneeId));
+                    let assigneeId = stage.assignee;
+                    if (assigneeId && typeof assigneeId === 'object') {
+                        assigneeId = assigneeId.id || assigneeId._id;
+                    }
+                    if (assigneeId) {
+                        const sid = String(assigneeId).toLowerCase().trim();
+                        allUserIds.add(sid);
+                    }
                 });
             }
         });
@@ -43,15 +47,20 @@ const populateTeamMembers = async (documents) => {
         const teamUsersMap = {};
         const userIdsArray = Array.from(allUserIds);
         if (userIdsArray.length > 0) {
+            console.log(`[Population] Fetching ${userIdsArray.length} users:`, userIdsArray);
             const { data: users, error: uError } = await supabase
                 .from('users')
                 .select('id, name, email, avatar, role, department')
                 .in('id', userIdsArray);
 
             if (!uError && users) {
+                console.log(`[Population] Database found ${users.length} matching users`);
                 users.forEach(u => {
-                    teamUsersMap[String(u.id)] = { ...u, _id: u.id };
+                    const sid = String(u.id).toLowerCase().trim();
+                    teamUsersMap[sid] = { ...u, _id: u.id };
                 });
+            } else if (uError) {
+                console.error('[Population] User fetch error:', uError);
             }
         }
 
@@ -64,14 +73,21 @@ const populateTeamMembers = async (documents) => {
             if (wf && wf.stages) {
                 // Collect unique assignee IDs for this specific workflow
                 const uniqueIds = [...new Set(wf.stages.map(s => {
-                    const assignee = s.assignee;
-                    return (assignee && typeof assignee === 'object') ? (assignee.id || assignee._id) : assignee;
+                    let assignee = s.assignee;
+                    if (assignee && typeof assignee === 'object') {
+                        assignee = assignee.id || assignee._id;
+                    }
+                    return assignee ? String(assignee).toLowerCase().trim() : null;
                 }))].filter(id => id);
 
-                // Map IDs to full user objects
-                teamMembers = uniqueIds.map(uid => teamUsersMap[String(uid)]).filter(u => u);
+                // Map IDs to full user objects using the normalized map
+                teamMembers = uniqueIds.map(uid => {
+                    const user = teamUsersMap[uid];
+                    if (!user) console.warn(`[Population] MISSING: User ID ${uid} not found in map keys:`, Object.keys(teamUsersMap));
+                    return user;
+                }).filter(u => u);
 
-                console.log(`[Population] Doc ${docId}: Populated ${teamMembers.length} team members from ${uniqueIds.length} unique stage IDs.`);
+                console.log(`[Population] Doc ${docId}: Stages=${wf.stages.length} | UniqueIDs=${uniqueIds.length} | Populated=${teamMembers.length}`);
             } else {
                 console.log(`[Population] Doc ${docId}: No workflow or stages found.`);
             }

@@ -2522,6 +2522,7 @@ class DomasApp {
 
     async showUploadDocumentModal(preSelectedProjectId = null) {
         this.currentUploadStep = 1;
+        this.selectedReviewers = new Set(); // Persistent selection for upload
         let projects = [];
         let categories = [];
         let users = [];
@@ -2615,9 +2616,10 @@ class DomasApp {
                                 <div id="reviewersList" style="max-height: 400px; overflow-y: auto; border: 1px solid var(--gray-200); border-radius: var(--radius-lg); padding: var(--spacing-sm); background: white;">
                                     ${users.length > 0 ? users.sort((a, b) => a.name.localeCompare(b.name)).map(user => {
             const uid = user.id || user._id;
+            const isChecked = this.selectedReviewers.has(uid);
             return `
                                             <label for="check_${uid}" style="display: flex; align-items: center; padding: var(--spacing-md); cursor: pointer; border-radius: var(--radius-md); transition: background 0.2s; border-bottom: 1px solid var(--gray-50);" onmouseover="this.style.background='var(--primary-50)'" onmouseout="this.style.background='transparent'">
-                                                <input type="checkbox" id="check_${uid}" class="doc-reviewer-checkbox" value="${uid}" style="width: 18px; height: 18px; margin-right: var(--spacing-md);" onchange="app.updateReviewerCount()">
+                                                <input type="checkbox" id="check_${uid}" class="doc-reviewer-checkbox" value="${uid}" ${isChecked ? 'checked' : ''} style="width: 18px; height: 18px; margin-right: var(--spacing-md);" onchange="app.toggleReviewerSelection('${uid}')">
                                                 <img src="${user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=4F46E5&color=fff`}" style="width: 40px; height: 40px; border-radius: 50%; margin-right: var(--spacing-md); box-shadow: var(--shadow-sm);">
                                                 <div style="flex: 1;">
                                                     <div style="font-weight: 600; font-size: var(--font-size-base); color: var(--gray-900);">${user.name}</div>
@@ -2682,11 +2684,21 @@ class DomasApp {
         `;
 
         document.getElementById('modalsContainer').innerHTML = modal;
+        this.selectedReviewers.clear();
         this.setUploadStep(1);
     }
 
+    toggleReviewerSelection(uid) {
+        if (this.selectedReviewers.has(uid)) {
+            this.selectedReviewers.delete(uid);
+        } else {
+            this.selectedReviewers.add(uid);
+        }
+        this.updateReviewerCount();
+    }
+
     updateReviewerCount() {
-        const count = document.querySelectorAll('.doc-reviewer-checkbox:checked').length;
+        const count = this.selectedReviewers.size;
         const badge = document.getElementById('reviewerCountBadge');
         if (badge) {
             badge.textContent = count;
@@ -2798,10 +2810,9 @@ class DomasApp {
         const category = document.getElementById('uploadCategory').value;
         const project = document.getElementById('uploadProject').value;
 
-        // Collect selected reviewers
-        const reviewerCheckboxes = document.querySelectorAll('.doc-reviewer-checkbox:checked');
-        const reviewers = Array.from(reviewerCheckboxes).map(cb => cb.value).filter(val => val && val !== 'undefined');
-        console.log('[Upload] Final reviewers to send:', reviewers);
+        // Use state-based selection instead of DOM scraping
+        const reviewers = Array.from(this.selectedReviewers).filter(val => val && val !== 'undefined');
+        console.log('[Upload] Final reviewers to send (from state):', reviewers);
         if (reviewers.length > 0) console.table(reviewers);
 
         // Debug check
@@ -3459,6 +3470,12 @@ class DomasApp {
         const reviewerCheckboxes = document.querySelectorAll('.edit-reviewer-checkbox:checked');
         const reviewers = Array.from(reviewerCheckboxes).map(cb => cb.value);
         console.log('[Edit] Selected reviewers:', reviewers);
+
+        if (reviewers.length === 0) {
+            if (!confirm('You have no reviewers selected. This document will not have an approval team. Continue?')) {
+                return;
+            }
+        }
 
         if (!title) {
             this.showToast('error', 'Missing Title', 'Please enter a document title');
