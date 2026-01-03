@@ -16,6 +16,7 @@
             try {
                 const branding = JSON.parse(localStorage.getItem('branding'));
                 if (branding) {
+                    // Apply CSS custom properties for colors
                     if (branding.sidebarColor) document.documentElement.style.setProperty('--sidebar-bg', branding.sidebarColor);
                     if (branding.sidebarTextColor) document.documentElement.style.setProperty('--sidebar-text', branding.sidebarTextColor);
                     if (branding.sidebarActiveBg) {
@@ -28,11 +29,56 @@
 
                     const activeTextColor = branding.sidebarActiveTextColor || branding.sidebarRoleColor;
                     if (activeTextColor) document.documentElement.style.setProperty('--sidebar-active-text', activeTextColor);
+
+                    // Store branding for DOMContentLoaded to avoid FOUC
+                    window.__brandingCache = branding;
                 }
             } catch (e) {
                 // Silently fail if storage is invalid
             }
         })();
+    </script>
+    <script>
+        // Apply logo/name immediately when DOM is ready
+        document.addEventListener('DOMContentLoaded', function () {
+            const branding = window.__brandingCache;
+            if (branding) {
+                const systemName = branding.name || 'Domasy';
+                const displayMode = branding.displayMode || 'both';
+
+                // Update logo text
+                const logoTexts = document.querySelectorAll('.logo-text');
+                logoTexts.forEach(text => {
+                    text.textContent = systemName;
+                    const showName = displayMode === 'both' || displayMode === 'name-only';
+                    text.style.display = showName ? 'block' : 'none';
+                });
+
+                // Update document title
+                document.title = `${systemName} - Document Management System`;
+
+                // Handle custom logo if exists
+                if (branding.logo) {
+                    const logoContainers = document.querySelectorAll('.logo');
+                    const showLogo = displayMode === 'both' || displayMode === 'logo-only';
+
+                    if (showLogo) {
+                        logoContainers.forEach(container => {
+                            let img = container.querySelector('img.custom-logo');
+                            if (!img) {
+                                img = document.createElement('img');
+                                img.className = 'custom-logo';
+                                img.style.height = '32px';
+                                img.style.marginRight = '12px';
+                                container.prepend(img);
+                            }
+                            img.src = branding.logo;
+                            img.style.display = 'block';
+                        });
+                    }
+                }
+            }
+        });
     </script>
 </head>
 
@@ -43,7 +89,6 @@
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <div class="logo">
-                    <i class="fas fa-shield-alt"></i>
                     <span class="logo-text">Domasy</span>
                 </div>
                 <button class="sidebar-toggle" id="sidebarToggle">

@@ -112,8 +112,9 @@ class DomasApp {
                     img.src = this.branding.logo;
                     img.style.display = 'block';
                 } else {
+                    // No default icon - hide both
                     if (img) img.style.display = 'none';
-                    if (icon) icon.style.display = 'block';
+                    if (icon) icon.style.display = 'none';
                 }
             } else {
                 if (img) img.style.display = 'none';
@@ -138,7 +139,7 @@ class DomasApp {
         if (loginLogoContainer) {
             const logoContent = this.branding.logo ?
                 `<img src="${this.branding.logo}" alt="Logo" style="height: 64px; width: auto; max-width: 200px; display: block;">` :
-                `<i class="fas fa-shield-alt"></i>`;
+                '';
             loginLogoContainer.innerHTML = logoContent;
         }
 
@@ -207,7 +208,7 @@ class DomasApp {
                     <div id="loginLogoContainer" style="color: var(--primary-600); font-size: 36px; margin-bottom: var(--spacing-md); display: flex; justify-content: center;">
                         ${this.branding.logo ?
                 `<img src="${this.branding.logo}" alt="Logo" style="height: 64px; width: auto; max-width: 200px; display: block;">` :
-                `<i class="fas fa-shield-alt"></i>`
+                ''
             }
                     </div>
                     <h1 style="font-size: 24px; font-weight: 700; color: var(--text-primary);">Welcome Back</h1>
