@@ -2563,7 +2563,7 @@ class DomasApp {
                             </div>
                             <div class="step-item" id="step2Indicator">
                                 <div class="step-number">2</div>
-                                <div class="step-label">Assign Approvers</div>
+                                <div class="step-label">Assign Approvers <span id="reviewerCountBadge" class="badge badge-primary" style="margin-left:5px; display:none;">0</span></div>
                             </div>
                             <div class="step-item" id="step3Indicator">
                                 <div class="step-number">3</div>
@@ -2617,7 +2617,7 @@ class DomasApp {
             const uid = user.id || user._id;
             return `
                                             <label for="check_${uid}" style="display: flex; align-items: center; padding: var(--spacing-md); cursor: pointer; border-radius: var(--radius-md); transition: background 0.2s; border-bottom: 1px solid var(--gray-50);" onmouseover="this.style.background='var(--primary-50)'" onmouseout="this.style.background='transparent'">
-                                                <input type="checkbox" id="check_${uid}" class="doc-reviewer-checkbox" value="${uid}" style="width: 18px; height: 18px; margin-right: var(--spacing-md);">
+                                                <input type="checkbox" id="check_${uid}" class="doc-reviewer-checkbox" value="${uid}" style="width: 18px; height: 18px; margin-right: var(--spacing-md);" onchange="app.updateReviewerCount()">
                                                 <img src="${user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=4F46E5&color=fff`}" style="width: 40px; height: 40px; border-radius: 50%; margin-right: var(--spacing-md); box-shadow: var(--shadow-sm);">
                                                 <div style="flex: 1;">
                                                     <div style="font-weight: 600; font-size: var(--font-size-base); color: var(--gray-900);">${user.name}</div>
@@ -2683,6 +2683,15 @@ class DomasApp {
 
         document.getElementById('modalsContainer').innerHTML = modal;
         this.setUploadStep(1);
+    }
+
+    updateReviewerCount() {
+        const count = document.querySelectorAll('.doc-reviewer-checkbox:checked').length;
+        const badge = document.getElementById('reviewerCountBadge');
+        if (badge) {
+            badge.textContent = count;
+            badge.style.display = count > 0 ? 'inline-block' : 'none';
+        }
     }
 
     handleNextStep() {
@@ -3399,6 +3408,31 @@ class DomasApp {
                                     <textarea class="form-textarea" id="editDocDescription" rows="3">${doc.description || ''}</textarea>
                                 </div>
 
+                                <!-- Restored Team Management Section -->
+                                <div class="form-group">
+                                    <label class="form-label" style="font-weight: 700; color: var(--primary-700);">Manage Approval Team</label>
+                                    <p style="font-size: var(--font-size-xs); color: var(--gray-500); margin-bottom: var(--spacing-sm);">
+                                        Selected users will be notified and added to the review stages.
+                                    </p>
+                                    <div style="max-height: 250px; overflow-y: auto; border: 1px solid var(--gray-200); border-radius: var(--radius-lg); padding: var(--spacing-sm); background: white;">
+                                        ${users.length > 0 ? users.sort((a, b) => a.name.localeCompare(b.name)).map(user => {
+                const uid = user.id || user._id;
+                const isAssigned = currentReviewerIds.has(String(uid));
+                return `
+                                                <label style="display: flex; align-items: center; padding: var(--spacing-sm); cursor: pointer; border-radius: var(--radius-md); transition: background 0.2s;" onmouseover="this.style.background='var(--gray-50)'" onmouseout="this.style.background='transparent'">
+                                                    <input type="checkbox" class="edit-reviewer-checkbox" value="${uid}" ${isAssigned ? 'checked' : ''} style="margin-right: var(--spacing-md); width:16px; height:16px;">
+                                                    <img src="${user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}`}" style="width: 32px; height: 32px; border-radius: 50%; margin-right: var(--spacing-md);">
+                                                    <div style="flex: 1;">
+                                                        <div style="font-weight: 600; font-size: var(--font-size-sm);">${user.name}</div>
+                                                        <div style="font-size: var(--font-size-xs); color: var(--gray-500);">${user.role}</div>
+                                                    </div>
+                                                    ${isAssigned ? '<span class="badge badge-success" style="font-size:10px;">Enrolled</span>' : ''}
+                                                </label>
+                                            `;
+            }).join('') : '<div style="text-align:center; padding:20px; color:var(--gray-400);">No users available</div>'}
+                                    </div>
+                                </div>
+
                                 <div style="display: flex; justify-content: flex-end; gap: var(--spacing-sm); margin-top: var(--spacing-xl);">
                                     <button type="button" class="btn btn-outline" onclick="app.closeModal()">Cancel</button>
                                     <button type="submit" class="btn btn-primary">Save Changes</button>
@@ -3420,6 +3454,11 @@ class DomasApp {
         const project = document.getElementById('editDocProject').value;
         const category = document.getElementById('editDocCategory').value;
         const description = document.getElementById('editDocDescription').value;
+
+        // Collect reviewers from checkboxes
+        const reviewerCheckboxes = document.querySelectorAll('.edit-reviewer-checkbox:checked');
+        const reviewers = Array.from(reviewerCheckboxes).map(cb => cb.value);
+        console.log('[Edit] Selected reviewers:', reviewers);
 
         if (!title) {
             this.showToast('error', 'Missing Title', 'Please enter a document title');

@@ -351,8 +351,69 @@ exports.updateDocument = async (req, res) => {
             });
         }
 
-        const { title, description, category, project } = req.body;
+        const { title, description, category, project, reviewers } = req.body;
         const updatedDoc = await DocumentService.update(req.params.id, { title, description, category, project });
+
+        // Update Reviewers / Workflow if provided
+        if (reviewers) {
+            let newReviewerIds = [];
+            try {
+                if (typeof reviewers === 'string') {
+                    newReviewerIds = JSON.parse(reviewers);
+                } else if (Array.isArray(reviewers)) {
+                    newReviewerIds = reviewers;
+                }
+            } catch (e) {
+                if (typeof reviewers === 'string' && reviewers.trim()) {
+                    newReviewerIds = [reviewers];
+                }
+            }
+
+            // Normalize to strings
+            newReviewerIds = newReviewerIds.map(id => String(id).trim()).filter(id => id && id !== 'undefined');
+
+            const workflowData = await ApprovalWorkflowService.findByDocumentId(req.params.id);
+            if (workflowData) {
+                // 1. Keep history (completed/rejected stages)
+                const historyStages = workflowData.stages.filter(s => s.status === 'completed' || s.status === 'rejected' || s.status === 'changes_requested');
+
+                // 2. Build new stages for the new selection
+                const newStages = [];
+                for (let i = 0; i < newReviewerIds.length; i++) {
+                    const rId = newReviewerIds[i];
+                    const user = await UserService.findById(rId);
+
+                    newStages.push({
+                        name: user ? `${user.name} Review` : `Review Stage ${i + 1}`,
+                        assignee: rId,
+                        department: user?.department || 'Review',
+                        status: 'pending',
+                        order: historyStages.length + i + 1
+                    });
+                }
+
+                // Activate the first new stage if there's no ongoing current stage
+                if (newStages.length > 0) {
+                    newStages[0].status = 'current';
+                }
+
+                const finalStages = [...historyStages, ...newStages];
+
+                await ApprovalWorkflowService.update(workflowData.id, {
+                    stages: finalStages,
+                    currentStageIndex: historyStages.length,
+                    overallStatus: historyStages.some(s => s.status === 'rejected') ? 'Rejected' : 'In Progress'
+                });
+
+                // Update document's current approver if needed
+                if (newStages.length > 0) {
+                    await DocumentService.update(req.params.id, {
+                        currentApprover: newStages[0].assignee,
+                        status: 'In Review'
+                    });
+                }
+            }
+        }
 
         await AuditLogService.create({
             user: req.user.id,
@@ -360,7 +421,7 @@ exports.updateDocument = async (req, res) => {
             actionType: 'info',
             document: req.params.id,
             documentTitle: updatedDoc.title,
-            details: 'Document details updated',
+            details: 'Document details and reviewers updated',
             ipAddress: req.ip
         });
 
