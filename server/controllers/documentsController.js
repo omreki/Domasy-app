@@ -139,26 +139,31 @@ exports.uploadDocument = async (req, res) => {
         const finalCategory = category || tags || 'General';
         const finalTags = Array.isArray(tags) ? tags : (tags ? [tags] : [finalCategory]);
 
-        // Parse reviewers if provided as JSON string or array
-        let reviewerIds = [];
-        console.log('[Upload] Received reviewers field:', typeof reviewers, reviewers);
+        console.log('[Upload] Full req.body:', JSON.stringify(req.body));
 
-        if (reviewers) {
-            if (Array.isArray(reviewers)) {
-                reviewerIds = reviewers;
-            } else {
+        // Parse reviewers if provided as JSON string or array
+        let rawReviewers = reviewers || req.body['reviewers[]'] || req.body.reviewer;
+        let reviewerIds = [];
+        console.log('[Upload] Received reviewers field:', typeof rawReviewers, rawReviewers);
+
+        if (rawReviewers) {
+            if (Array.isArray(rawReviewers)) {
+                reviewerIds = rawReviewers;
+            } else if (typeof rawReviewers === 'string') {
                 try {
-                    reviewerIds = JSON.parse(reviewers);
+                    reviewerIds = JSON.parse(rawReviewers);
                 } catch (e) {
-                    if (typeof reviewers === 'string' && reviewers.trim()) {
-                        reviewerIds = [reviewers];
+                    if (rawReviewers.trim()) {
+                        reviewerIds = [rawReviewers];
                     }
                 }
             }
         }
 
-        // Ensure reviewerIds is an array of strings
-        reviewerIds = Array.isArray(reviewerIds) ? reviewerIds : (reviewerIds ? [reviewerIds] : []);
+        // Final cleanup: Ensure all elements are strings and not empty
+        reviewerIds = (Array.isArray(reviewerIds) ? reviewerIds : [reviewerIds])
+            .filter(id => id && typeof id === 'string' && id.trim() !== '' && id !== 'undefined');
+
         console.log('[Upload] Final parsed reviewerIds:', reviewerIds);
 
         // Generate thumbnail for PDF

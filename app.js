@@ -2510,10 +2510,15 @@ class DomasApp {
         const project = document.getElementById('uploadProject').value;
 
         // Collect selected reviewers
-        // Collect selected reviewers - use more specific selector to avoid collisions
-        const reviewerCheckboxes = document.querySelectorAll('#uploadDocumentModal .doc-reviewer-checkbox:checked');
+        const reviewerCheckboxes = document.querySelectorAll('.doc-reviewer-checkbox:checked');
         const reviewers = Array.from(reviewerCheckboxes).map(cb => cb.value).filter(val => val && val !== 'undefined');
         console.log('[Upload] Selected Reviewer IDs:', reviewers);
+
+        // Debug check
+        if (reviewers.length === 0) {
+            const allCheckboxes = document.querySelectorAll('.doc-reviewer-checkbox');
+            console.log('[Upload] No reviewers selected. Total checkboxes found:', allCheckboxes.length);
+        }
 
         if (!file) {
             this.showToast('error', 'Missing File', 'Please select a file to upload.');
@@ -2529,18 +2534,20 @@ class DomasApp {
         }
 
         const formData = new FormData();
-        formData.append('file', file);
         formData.append('title', title);
         formData.append('description', description);
         formData.append('tags', category);
-        formData.append('category', category); // Send both to be safe
+        formData.append('category', category);
         formData.append('project', project);
 
         // Append reviewers as JSON string
-        console.log('[Upload] Selected Reviewers:', reviewers);
+        console.log('[Upload] Selected Reviewers count:', reviewers.length);
         if (reviewers.length > 0) {
             formData.append('reviewers', JSON.stringify(reviewers));
         }
+
+        // ALWAYS APPEND FILE LAST for better compatibility with some multipart parsers
+        formData.append('file', file);
 
         // Show loading state
         const btn = document.querySelector('#uploadDocumentModal .btn-primary');

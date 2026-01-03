@@ -56,6 +56,8 @@ const populateTeamMembers = async (documents) => {
             const uploaderId = doc.uploaded_by || doc.uploadedBy;
             const normalizedUploaderId = (uploaderId && typeof uploaderId === 'object') ? (uploaderId.id || uploaderId._id) : uploaderId;
 
+            console.log(`[Population] Processing doc: ${docId}, Uploader: ${normalizedUploaderId}, Workflow Stages: ${wf?.stages?.length || 0}`);
+
             let teamMembers = [];
 
             if (wf && wf.stages) {
@@ -63,15 +65,16 @@ const populateTeamMembers = async (documents) => {
                 const uniqueIds = [...new Set(wf.stages.map(s => {
                     const assignee = s.assignee;
                     return (assignee && typeof assignee === 'object') ? (assignee.id || assignee._id) : assignee;
-                }).filter(id => {
-                    const cleanId = id ? (typeof id === 'object' ? (id.id || id._id) : id) : id;
-                    return cleanId && String(cleanId) !== String(normalizedUploaderId);
-                }))];
+                }).filter(id => id))];
+
+                console.log(`[Population] Unique stage IDs for doc ${docId}:`, uniqueIds);
 
                 teamMembers = uniqueIds.map(uid => teamUsersMap[uid]).filter(u => u);
 
                 if (teamMembers.length > 0) {
                     console.log(`[Population] Found ${teamMembers.length} reviewers for doc ${docId}`);
+                } else {
+                    console.log(`[Population] No matching users found in teamUsersMap for IDs:`, uniqueIds);
                 }
             } else {
                 if (docId) console.log(`[Population] No workflow found for doc ${docId}`);
