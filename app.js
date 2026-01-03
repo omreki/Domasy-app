@@ -889,6 +889,10 @@ class DomasApp {
         const project = doc.project ? (doc.project.name || doc.project) : 'Unassigned';
         const teamMembers = doc.teamMembers || [];
 
+        if (teamMembers.length > 0) {
+            console.log(`[UI Debug] Doc ${doc.id || doc._id} has ${teamMembers.length} team members:`, teamMembers);
+        }
+
         const statusColors = {
             'Approved': 'success',
             'In Review': 'info',
