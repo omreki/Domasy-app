@@ -6,7 +6,7 @@ class ApprovalWorkflowService {
     // Create workflow
     static async create(workflowData) {
         const workflow = {
-            document_id: workflowData.document, // ID of the document
+            document_id: workflowData.document_id || workflowData.document, // ID of the document
             stages: workflowData.stages,
             current_stage_index: workflowData.currentStageIndex || 0,
             overall_status: workflowData.overallStatus || 'In Progress',
